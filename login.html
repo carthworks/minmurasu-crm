@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — MIN MURASU | Digital Growth &amp; Marketing Portal</title>
+  <link rel="stylesheet" href="global.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Manrope', 'Inter', 'system-ui', 'sans-serif'],
+            sans: ['Inter', 'Manrope', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              navy: '#0D2040',
+              navyDark: '#071326',
+              navySurface: '#0A1931',
+              orange: '#F58220',
+              orangeHover: '#E06F10',
+              blue: '#0082CA',
+              slate: '#475569',
+              whatsapp: '#25D366',
+            },
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="min-h-screen bg-[#FAFBFD] text-brand-navy dark:bg-brand-navyDark dark:text-white font-sans antialiased selection:bg-brand-orange/30 selection:text-white transition-colors duration-200">
+  <!-- Subtle geometric grid & brand ambient glow -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden">
+    <div class="absolute inset-0 bg-brand-grid bg-[size:36px_36px]"></div>
+    <div class="absolute -top-40 left-1/3 w-[680px] h-[340px] rounded-full bg-brand-blue/12 blur-3xl"></div>
+    <div class="absolute bottom-0 right-0 w-[460px] h-[300px] rounded-full bg-brand-orange/10 blur-3xl"></div>
+  </div>
+
+  <!-- Theme Toggle -->
+  <div class="fixed top-4 right-4 z-20">
+    <button
+      id="themeToggle"
+      type="button"
+      aria-label="Toggle color theme"
+      class="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/15 bg-white/90 dark:bg-brand-navy/90 backdrop-blur px-3 py-1.5 text-xs font-medium text-brand-slate dark:text-slate-200 hover:border-brand-blue/50 transition"
+    >
+      <span id="themeIcon" class="text-brand-orange">☾</span>
+      <span id="themeLabel">Dark</span>
+    </button>
+  </div>
+
+  <main class="relative z-10 min-h-screen flex items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
+    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+
+      <!-- Left Column: MIN MURASU Agency Positioning -->
+      <section class="hidden lg:flex lg:col-span-6 flex-col justify-between space-y-8 pr-4">
+        <div class="space-y-6">
+          <!-- Brand Logo Area -->
+          <div class="inline-flex items-center gap-3.5">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-navy dark:bg-brand-orange shadow-lg shadow-brand-orange/20 ring-1 ring-white/15">
+              <!-- Stylized Murasu Drum / Growth Pulse Mark -->
+              <svg class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <ellipse cx="12" cy="7" rx="8" ry="3" />
+                <path d="M4 7v10c0 1.66 3.58 3 8 3s8-1.34 8-3V7" />
+                <path d="M8 12l2.5 2L16 10" />
+              </svg>
+            </div>
+            <div>
+              <span class="font-display text-2xl font-extrabold tracking-tight text-brand-navy dark:text-white">MIN MURASU</span>
+              <span class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-orange">The Digital Drum · minmurasu.digital</span>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div class="inline-flex items-center gap-2 rounded-full border border-brand-whatsapp/30 bg-brand-whatsapp/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-brand-whatsapp">
+              <span class="h-2 w-2 rounded-full bg-brand-whatsapp animate-pulse"></span>
+              Real-Time Campaign &amp; WhatsApp CRM Sync Active
+            </div>
+            <h1 class="font-display text-4xl font-extrabold tracking-tight text-brand-navy dark:text-white leading-[1.15]">
+              Turn Digital Attention Into Business Growth.
+            </h1>
+            <p class="text-sm leading-relaxed text-brand-slate dark:text-slate-300">
+              Sign in to your client growth console to monitor live campaign ROI, qualified lead pipelines, SEO/GEO rankings, and automated WhatsApp conversions.
+            </p>
+          </div>
+        </div>
+
+        <!-- Agency Pillars -->
+        <div class="grid grid-cols-2 gap-4 pt-2">
+          <div class="rounded-xl border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-brand-navySurface/80 backdrop-blur p-4">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-brand-blue">Growth Stack</p>
+            <p class="mt-1 font-display text-sm font-bold text-brand-navy dark:text-white">SEO · GEO · Meta &amp; Google Ads</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-brand-navySurface/80 backdrop-blur p-4">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-brand-orange">Core Promise</p>
+            <p class="mt-1 font-display text-sm font-bold text-brand-navy dark:text-white">Zero Fabricated Proof</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Login Card -->
+      <section class="lg:col-span-6 w-full max-w-md mx-auto">
+        <div class="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-brand-navy/95 backdrop-blur-xl shadow-xl shadow-brand-navy/10 dark:shadow-black/50 p-6 sm:p-8">
+
+          <!-- Mobile / Tablet Brand Logo Area -->
+          <div class="flex lg:hidden items-center justify-center gap-3 mb-6">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-orange shadow-md shadow-brand-orange/25">
+              <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <ellipse cx="12" cy="7" rx="8" ry="3" />
+                <path d="M4 7v10c0 1.66 3.58 3 8 3s8-1.34 8-3V7" />
+                <path d="M8 12l2.5 2L16 10" />
+              </svg>
+            </div>
+            <div>
+              <span class="font-display text-lg font-extrabold tracking-tight text-brand-navy dark:text-white">MIN MURASU</span>
+              <span class="block text-[10px] font-semibold uppercase tracking-widest text-brand-orange">minmurasu.digital</span>
+            </div>
+          </div>
+
+          <!-- Header -->
+          <div class="space-y-1.5 mb-6">
+            <h2 class="font-display text-xl font-bold tracking-tight text-brand-navy dark:text-white">
+              Client &amp; Growth Portal
+            </h2>
+            <p class="text-sm text-brand-slate dark:text-slate-300">
+              Sign in to view your campaigns, leads, and ROI telemetry.
+            </p>
+          </div>
+
+          <!-- Login Form -->
+          <form id="loginForm" class="space-y-5" novalidate>
+            <!-- Email Field -->
+            <div class="space-y-1.5">
+              <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-brand-slate dark:text-slate-300">
+                Work Email
+              </label>
+              <div class="relative">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="20" height="16" x="2" y="4" rx="2" />
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                  </svg>
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autocomplete="email"
+                  required
+                  placeholder="you@company.com"
+                  class="block w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navyDark/80 pl-10 pr-4 py-2.5 text-sm text-brand-navy dark:text-white placeholder-slate-400 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/25 transition"
+                />
+              </div>
+            </div>
+
+            <!-- Password Field -->
+            <div class="space-y-1.5">
+              <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-brand-slate dark:text-slate-300">
+                Password
+              </label>
+              <div class="relative">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </div>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                  placeholder="••••••••••••••••"
+                  class="block w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navyDark/80 pl-10 pr-11 py-2.5 text-sm text-brand-navy dark:text-white placeholder-slate-400 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/25 transition"
+                />
+                <button
+                  id="togglePassword"
+                  type="button"
+                  aria-label="Show password"
+                  class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-brand-navy dark:hover:text-white transition"
+                >
+                  <svg id="eyeOpen" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <svg id="eyeClosed" class="h-4 w-4 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                    <line x1="2" x2="22" y1="2" y2="22" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Remember Me & Forgot Password -->
+            <div class="flex items-center justify-between pt-0.5">
+              <label for="remember" class="inline-flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  id="remember"
+                  name="remember"
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-slate-300 dark:border-white/20 bg-slate-50 dark:bg-brand-navyDark text-brand-orange focus:ring-brand-orange/30 cursor-pointer accent-[#F58220]"
+                />
+                <span class="text-sm text-brand-slate dark:text-slate-300">Remember me</span>
+              </label>
+
+              <a
+                href="#forgot-password"
+                class="text-sm font-semibold text-brand-blue hover:underline transition"
+              >
+                Forgot password?
+              </a>
+            </div>
+
+            <!-- Form Feedback Banner -->
+            <p id="formMessage" class="hidden text-xs font-medium rounded-lg px-3 py-2 border"></p>
+
+            <!-- Prominent Electric Orange CTA Button -->
+            <button
+              type="submit"
+              class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-orange hover:bg-brand-orangeHover active:scale-[0.99] px-4 py-3 font-display text-sm font-bold text-white shadow-lg shadow-brand-orange/25 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-brand-navy transition"
+            >
+              <span>Sign In to Growth Console</span>
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+              </svg>
+            </button>
+          </form>
+
+          <!-- Divider & Google Workspace SSO -->
+          <div class="mt-6">
+            <div class="relative flex items-center justify-center">
+              <div class="w-full border-t border-slate-200 dark:border-white/10"></div>
+              <span class="bg-white dark:bg-brand-navy px-3 text-[11px] font-medium uppercase tracking-wider text-slate-400 shrink-0">
+                Or continue with
+              </span>
+              <div class="w-full border-t border-slate-200 dark:border-white/10"></div>
+            </div>
+
+            <button
+              type="button"
+              class="mt-4 w-full inline-flex items-center justify-center gap-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navyDark/60 hover:bg-slate-100 dark:hover:bg-brand-navySurface px-4 py-2.5 text-sm font-medium text-brand-navy dark:text-white transition"
+            >
+              <svg class="h-4 w-4 text-brand-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" /><path d="M12 8v8" /><path d="M8 12h8" />
+              </svg>
+              <span>Google Workspace / Client SSO</span>
+            </button>
+          </div>
+
+          <!-- Footer Support Link -->
+          <div class="mt-6 pt-5 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between text-xs text-brand-slate dark:text-slate-400">
+            <span>Need onboarding help?</span>
+            <a
+              href="https://www.minmurasu.digital"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-brand-whatsapp hover:underline"
+            >
+              <span class="h-1.5 w-1.5 rounded-full bg-brand-whatsapp"></span>
+              WhatsApp Desk
+            </a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    // Dark/Light mode toggle
+    const htmlEl = document.documentElement;
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const themeLabel = document.getElementById('themeLabel');
+
+    themeToggle.addEventListener('click', () => {
+      const isDark = htmlEl.classList.toggle('dark');
+      themeIcon.textContent = isDark ? '☾' : '☀';
+      themeLabel.textContent = isDark ? 'Dark' : 'Light';
+    });
+
+    // Password visibility toggle
+    const passwordInput = document.getElementById('password');
+    const togglePassword = document.getElementById('togglePassword');
+    const eyeOpen = document.getElementById('eyeOpen');
+    const eyeClosed = document.getElementById('eyeClosed');
+
+    togglePassword.addEventListener('click', () => {
+      const isHidden = passwordInput.type === 'password';
+      passwordInput.type = isHidden ? 'text' : 'password';
+      eyeOpen.classList.toggle('hidden', isHidden);
+      eyeClosed.classList.toggle('hidden', !isHidden);
+      togglePassword.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    });
+
+    // Client-side validation feedback & redirect to CRM dashboard
+    const loginForm = document.getElementById('loginForm');
+    const formMessage = document.getElementById('formMessage');
+
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = passwordInput.value;
+
+      formMessage.classList.remove(
+        'hidden',
+        'border-rose-500/30',
+        'bg-rose-500/10',
+        'text-rose-500',
+        'border-emerald-500/30',
+        'bg-emerald-500/10',
+        'text-emerald-400'
+      );
+
+      if (!email || !email.includes('@') || password.length < 8) {
+        formMessage.textContent = 'Please enter a valid work email and a password of at least 8 characters.';
+        formMessage.classList.add('border-rose-500/30', 'bg-rose-500/10', 'text-rose-500');
+        return;
+      }
+
+      formMessage.textContent = 'Authenticated. Redirecting to MIN MURASU Growth Console...';
+      formMessage.classList.add('border-emerald-500/30', 'bg-emerald-500/10', 'text-emerald-400');
+      setTimeout(() => {
+        window.location.href = 'crm-dashboard.html';
+      }, 650);
+    });
+  </script>
+</body>
+</html>

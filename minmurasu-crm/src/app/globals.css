@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --brand-navy: #0D2040;
+  --brand-navy-dark: #071326;
+  --brand-navy-surface: #0A1931;
+  --brand-orange: #F58220;
+  --brand-orange-hover: #E06F10;
+  --brand-blue: #0082CA;
+  --brand-slate: #475569;
+  --brand-whatsapp: #25D366;
+
+  --background: #FAFBFD;
+  --foreground: #0D2040;
+  --surface: #FFFFFF;
+  --surface-muted: #F1F5F9;
+  --border-subtle: #E2E8F0;
+}
+
+html.dark {
+  --background: #071326;
+  --foreground: #FFFFFF;
+  --surface: #0D2040;
+  --surface-muted: #0A1931;
+  --border-subtle: rgba(255, 255, 255, 0.12);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-navy-dark: var(--brand-navy-dark);
+  --color-brand-navy-surface: var(--brand-navy-surface);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-hover: var(--brand-orange-hover);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-slate: var(--brand-slate);
+  --color-brand-whatsapp: var(--brand-whatsapp);
+  --font-sans: var(--font-inter), "Inter", system-ui, sans-serif;
+  --font-display: var(--font-manrope), "Manrope", "Inter", system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+}
+
+.bg-brand-grid {
+  background-image:
+    linear-gradient(to right, rgba(0, 130, 202, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 130, 202, 0.07) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.card-shadow {
+  box-shadow: 0 1px 2px 0 rgba(13, 32, 64, 0.04), 0 1px 3px 0 rgba(13, 32, 64, 0.03);
+}
+
+.btn-brand-primary {
+  background-color: var(--brand-orange);
+  color: #FFFFFF;
+  font-family: var(--font-display);
+  font-weight: 700;
+  box-shadow: 0 8px 20px -4px rgba(245, 130, 32, 0.3);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.btn-brand-primary:hover {
+  background-color: var(--brand-orange-hover);
+}
+
+.btn-brand-primary:active {
+  transform: scale(0.99);
+}

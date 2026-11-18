@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+:root {
+  /* Official MIN MURASU Brand Palette */
+  --brand-navy: #0D2040;
+  --brand-navy-dark: #071326;
+  --brand-navy-surface: #0A1931;
+  --brand-orange: #F58220;
+  --brand-orange-hover: #E06F10;
+  --brand-blue: #0082CA;
+  --brand-white: #FFFFFF;
+  --brand-slate: #475569;
+  --brand-whatsapp: #25D366;
+
+  /* Typography */
+  --font-display: 'Manrope', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Light Theme Semantic Tokens */
+  --bg-canvas: #FAFBFD;
+  --bg-surface: #FFFFFF;
+  --bg-surface-muted: #F1F5F9;
+  --text-primary: #0D2040;
+  --text-secondary: #475569;
+  --border-subtle: #E2E8F0;
+}
+
+html.dark {
+  /* Dark Theme Semantic Tokens */
+  --bg-canvas: #071326;
+  --bg-surface: #0D2040;
+  --bg-surface-muted: #0A1931;
+  --text-primary: #FFFFFF;
+  --text-secondary: #CBD5E1;
+  --border-subtle: rgba(255, 255, 255, 0.12);
+}
+
+/* Base Typography & Theme */
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+}
+
+/* Shared Brand Backgrounds & Surfaces */
+.bg-brand-grid {
+  background-image:
+    linear-gradient(to right, rgba(0, 130, 202, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 130, 202, 0.07) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.card-shadow {
+  box-shadow: 0 1px 2px 0 rgba(13, 32, 64, 0.04), 0 1px 3px 0 rgba(13, 32, 64, 0.03);
+}
+
+.brand-surface {
+  background-color: var(--bg-surface);
+  border-color: var(--border-subtle);
+}
+
+/* Brand Buttons */
+.btn-brand-primary {
+  background-color: var(--brand-orange);
+  color: var(--brand-white);
+  font-family: var(--font-display);
+  font-weight: 700;
+  box-shadow: 0 8px 20px -4px rgba(245, 130, 32, 0.3);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.btn-brand-primary:hover {
+  background-color: var(--brand-orange-hover);
+}
+
+.btn-brand-primary:active {
+  transform: scale(0.99);
+}
+
+/* Brand Focus Ring */
+.focus-brand:focus {
+  outline: none;
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px rgba(0, 130, 202, 0.2);
+}

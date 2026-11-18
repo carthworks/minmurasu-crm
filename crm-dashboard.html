@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIN MURASU CRM — Digital Marketing Operations Dashboard</title>
+  <link rel="stylesheet" href="global.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Manrope', 'Inter', 'system-ui', 'sans-serif'],
+            sans: ['Inter', 'Manrope', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              navy: '#0D2040',
+              navyDark: '#071326',
+              navySurface: '#0A1931',
+              orange: '#F58220',
+              orangeHover: '#E06F10',
+              blue: '#0082CA',
+              slate: '#475569',
+              whatsapp: '#25D366',
+            },
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-[#FAFBFD] text-brand-navy antialiased">
+  <div class="min-h-screen flex">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebarBackdrop" class="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-xs hidden lg:hidden"></div>
+
+    <!-- Left Sidebar -->
+    <aside
+      id="sidebar"
+      class="fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between transition-transform duration-200 -translate-x-full lg:translate-x-0 lg:static lg:shrink-0"
+    >
+      <div>
+        <!-- Brand Header -->
+        <div class="h-16 px-5 flex items-center justify-between border-b border-slate-100">
+          <a href="#" class="flex items-center gap-2.5">
+            <div class="h-8 w-8 rounded-lg bg-brand-navy flex items-center justify-center text-white shadow-sm shadow-brand-navy/20">
+              <svg class="w-4 h-4 text-brand-orange" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="7" rx="8" ry="3" />
+                <path d="M4 7v10c0 1.66 3.58 3 8 3s8-1.34 8-3V7" />
+                <path d="M8 12l2.5 2L16 10" />
+              </svg>
+            </div>
+            <div>
+              <span class="font-display font-extrabold text-base tracking-tight text-brand-navy block leading-none">MIN MURASU</span>
+              <span class="text-[11px] font-semibold text-brand-orange tracking-wide">minmurasu.digital</span>
+            </div>
+          </a>
+          <button id="closeSidebarBtn" type="button" class="lg:hidden p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Close menu">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="p-3.5 space-y-6 overflow-y-auto">
+          <div>
+            <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Main Menu</p>
+            <ul class="space-y-1">
+              <li>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-600">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" />
+                  </svg>
+                  Overview
+                </a>
+              </li>
+              <li>
+                <a href="#projects" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  Clients
+                  <span class="ml-auto text-[11px] font-semibold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md">18</span>
+                </a>
+              </li>
+              <li>
+                <a href="#performance" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="m3 11 18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+                  </svg>
+                  Campaigns &amp; ROI
+                </a>
+              </li>
+              <li>
+                <a href="#projects" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                  </svg>
+                  Lead Pipeline
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Marketing Channels</p>
+            <ul class="space-y-1">
+              <li>
+                <a href="#channels" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.59 13.51 6.83 3.98" /><path d="m15.41 6.51-6.82 3.98" />
+                  </svg>
+                  Social Engagement
+                </a>
+              </li>
+              <li>
+                <a href="#channels" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" />
+                  </svg>
+                  Paid Search &amp; SEO
+                </a>
+              </li>
+              <li>
+                <a href="#channels" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                  </svg>
+                  Email Automation
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Operations</p>
+            <ul class="space-y-1">
+              <li>
+                <a href="#projects" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                  </svg>
+                  Project Deliverables
+                </a>
+              </li>
+              <li>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                  <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />
+                  </svg>
+                  Agency Settings
+                </a>
+              </li>
+            </ul>
+          </div>
+        </nav>
+      </div>
+
+      <!-- User Profile -->
+      <div class="p-4 border-t border-slate-100">
+        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition cursor-pointer">
+          <div class="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white text-xs font-semibold shrink-0">
+            AK
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-slate-900 truncate">Arjun Karthik</p>
+            <p class="text-xs text-slate-500 truncate">Growth Lead · Minmurasu</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex flex-col min-w-0">
+
+      <!-- Top Header Bar -->
+      <header class="h-16 bg-white/90 backdrop-blur border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 sticky top-0 z-20">
+        <div class="flex items-center gap-3 flex-1 max-w-xl">
+          <button id="openSidebarBtn" type="button" class="lg:hidden p-2 -ml-2 rounded-lg text-slate-500 hover:bg-slate-100" aria-label="Open menu">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div class="relative flex-1">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              id="globalSearch"
+              type="text"
+              placeholder="Search clients, campaigns, or deliverables..."
+              class="w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-4 py-2 text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15 transition"
+            />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Client Scope Selector -->
+          <select
+            id="clientFilter"
+            aria-label="Filter by client"
+            class="hidden sm:block rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15"
+          >
+            <option value="all">All Clients (18 Active)</option>
+            <option value="Kaveri Organics">Kaveri Organics</option>
+            <option value="Veloce EV">Veloce EV</option>
+            <option value="Nila Jewellery">Nila Jewellery</option>
+            <option value="Aether Cloud">Aether Cloud</option>
+            <option value="Zestify Foods">Zestify Foods</option>
+          </select>
+
+          <button type="button" class="relative p-2 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition" aria-label="Notifications">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            </svg>
+            <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">3</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto space-y-6">
+
+        <!-- Page Title & Actions -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Client Marketing CRM</h1>
+            <p class="text-sm text-slate-500 mt-0.5">
+              Track campaign ROI, lead generation velocity, social engagement, and client deliverables across <span class="font-medium text-slate-700">minmurasu.digital</span>.
+            </p>
+          </div>
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <div class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 card-shadow">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" />
+              </svg>
+              <span>Nov 1 – Nov 18, 2026</span>
+            </div>
+            <button
+              id="openModalBtn"
+              type="button"
+              class="btn-brand-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              New Client Campaign
+            </button>
+          </div>
+        </div>
+
+        <!-- Top 4 KPI Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <!-- KPI 1: Campaign ROI -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 card-shadow flex flex-col justify-between">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-xs font-medium text-slate-500">Avg. Campaign ROI</p>
+                  <p id="kpiRoi" class="text-2xl font-bold text-slate-900 mt-0.5">418%</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 flex items-end justify-between gap-2">
+              <div class="text-xs">
+                <span class="inline-flex items-center font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">↑ +24.5%</span>
+                <span class="text-slate-400 ml-1">vs last month</span>
+              </div>
+              <svg class="w-20 h-8 text-blue-500" viewBox="0 0 80 32" fill="none">
+                <path d="M2 26 C14 24, 20 14, 32 16 C44 18, 52 8, 64 10 C70 11, 74 5, 78 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- KPI 2: Lead Generation -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 card-shadow flex flex-col justify-between">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-xs font-medium text-slate-500">Qualified Leads (MQL)</p>
+                  <p id="kpiLeads" class="text-2xl font-bold text-slate-900 mt-0.5">3,842</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 flex items-end justify-between gap-2">
+              <div class="text-xs">
+                <span class="inline-flex items-center font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">↑ +18.2%</span>
+                <span class="text-slate-400 ml-1">vs last month</span>
+              </div>
+              <svg class="w-20 h-8 text-emerald-500" viewBox="0 0 80 32" fill="none">
+                <path d="M2 28 C12 22, 22 25, 34 17 C46 9, 58 14, 78 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- KPI 3: Social Engagement -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 card-shadow flex flex-col justify-between">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M7 10v12" /><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-xs font-medium text-slate-500">Social Engagement</p>
+                  <p id="kpiEngagement" class="text-2xl font-bold text-slate-900 mt-0.5">6.84%</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 flex items-end justify-between gap-2">
+              <div class="text-xs">
+                <span class="inline-flex items-center font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">↑ +12.4%</span>
+                <span class="text-slate-400 ml-1">142.5K interactions</span>
+              </div>
+              <svg class="w-20 h-8 text-amber-500" viewBox="0 0 80 32" fill="none">
+                <path d="M2 24 C16 26, 26 18, 38 19 C50 20, 62 10, 78 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- KPI 4: Active Client Projects -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 card-shadow flex flex-col justify-between">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-xs font-medium text-slate-500">On-Track Deliverables</p>
+                  <p id="kpiProjects" class="text-2xl font-bold text-slate-900 mt-0.5">94.2%</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 flex items-end justify-between gap-2">
+              <div class="text-xs">
+                <span class="inline-flex items-center font-semibold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-md">17 / 18 Clients</span>
+                <span class="text-slate-400 ml-1">on schedule</span>
+              </div>
+              <svg class="w-20 h-8 text-violet-500" viewBox="0 0 80 32" fill="none">
+                <path d="M2 22 C18 20, 28 12, 42 14 C56 16, 66 7, 78 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </div>
+          </div>
+        </section>
+
+        <!-- Middle Row: Performance Chart + Channel Engagement Breakdown -->
+        <section id="performance" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <!-- Campaign ROI & Lead Generation Chart -->
+          <div class="lg:col-span-8 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 card-shadow">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-base font-semibold text-slate-900">Campaign ROI &amp; Lead Generation</h2>
+                  <span class="text-[11px] font-medium bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">+24.5% ROI Lift</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">Attributed revenue ROI (%) vs. qualified leads captured across client campaigns</p>
+              </div>
+              <div class="inline-flex rounded-xl bg-slate-100 p-1 self-start">
+                <button type="button" data-range="daily" class="range-btn px-3 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition">Daily</button>
+                <button type="button" data-range="weekly" class="range-btn px-3 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition">Weekly</button>
+                <button type="button" data-range="monthly" class="range-btn px-3 py-1 rounded-lg text-xs font-semibold bg-white text-blue-600 shadow-xs transition">Monthly</button>
+              </div>
+            </div>
+            <div class="h-72 w-full">
+              <canvas id="roiLeadsChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Social & Channel Engagement Donut -->
+          <div id="channels" class="lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 card-shadow flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">Social &amp; Channel Mix</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Engagement &amp; lead share</p>
+              </div>
+              <span class="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">This Month</span>
+            </div>
+
+            <div class="relative h-48 flex items-center justify-center">
+              <canvas id="channelDonutChart"></canvas>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-2xl font-bold text-slate-900">142.5K</span>
+                <span class="text-[11px] font-medium text-slate-500">Engagements</span>
+              </div>
+            </div>
+
+            <div class="mt-5 space-y-2.5 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-2 text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span>Instagram &amp; Reels</span>
+                <span class="font-semibold text-slate-900">34.2%</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-2 text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-violet-500"></span>LinkedIn B2B</span>
+                <span class="font-semibold text-slate-900">27.8%</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-2 text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Meta &amp; Google Ads</span>
+                <span class="font-semibold text-slate-900">22.5%</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-2 text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>SEO &amp; Email</span>
+                <span class="font-semibold text-slate-900">15.5%</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bottom Section: Client-Specific Project Status Updates -->
+        <section id="projects" class="bg-white rounded-2xl border border-slate-200/80 card-shadow overflow-hidden">
+          <div class="p-5 sm:p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 class="text-base font-semibold text-slate-900">Client Project Status &amp; Campaign Tracker</h2>
+              <p class="text-xs text-slate-500 mt-0.5">Real-time deliverables, ROI, and social engagement by client account</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <div class="relative">
+                <svg class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                </svg>
+                <input
+                  id="tableSearch"
+                  type="text"
+                  placeholder="Filter client or project..."
+                  class="rounded-xl border border-slate-200 bg-slate-50/70 pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <select id="statusFilter" class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none">
+                <option value="all">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="In Review">In Review</option>
+                <option value="Optimization">Optimization</option>
+                <option value="Completed">Completed</option>
+              </select>
+              <button id="exportCsvBtn" type="button" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 transition">
+                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" />
+                </svg>
+                Export CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-100 bg-slate-50/60 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <th class="py-3 px-5">Client &amp; Project</th>
+                  <th class="py-3 px-4">Primary Channel</th>
+                  <th class="py-3 px-4">Status</th>
+                  <th class="py-3 px-4">Leads</th>
+                  <th class="py-3 px-4">Engagement</th>
+                  <th class="py-3 px-4">Campaign ROI</th>
+                  <th class="py-3 px-4">Progress</th>
+                  <th class="py-3 px-5 text-right">Next Milestone</th>
+                </tr>
+              </thead>
+              <tbody id="projectTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- New Client Campaign Modal -->
+  <div id="campaignModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-semibold text-slate-900">Launch Client Campaign</h3>
+        <button id="closeModalBtn" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
+      </div>
+      <form id="newCampaignForm" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Client Name</label>
+          <input id="newClient" type="text" required placeholder="e.g., Kaveri Organics" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Campaign / Project Name</label>
+          <input id="newProject" type="text" required placeholder="e.g., Q4 Festive Reels Funnel" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Channel</label>
+            <select id="newChannel" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+              <option>Instagram &amp; Meta</option>
+              <option>LinkedIn B2B</option>
+              <option>Google Search</option>
+              <option>SEO &amp; Content</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Status</label>
+            <select id="newStatus" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+              <option>Active</option>
+              <option>In Review</option>
+              <option>Optimization</option>
+            </select>
+          </div>
+        </div>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" id="cancelModalBtn" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-semibold text-white">Add to CRM</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Sample Minmurasu Client Projects Data
+    const projectsData = [
+      {
+        client: 'Kaveri Organics',
+        initials: 'KO',
+        badgeColor: 'bg-emerald-100 text-emerald-700',
+        project: 'Festive D2C Reels & Retargeting',
+        channel: 'Instagram & Meta',
+        status: 'Active',
+        leads: 1140,
+        engagement: '8.2%',
+        roi: '485%',
+        progress: 78,
+        milestone: 'Creative A/B Refresh · Nov 21',
+      },
+      {
+        client: 'Veloce EV',
+        initials: 'VE',
+        badgeColor: 'bg-blue-100 text-blue-700',
+        project: 'Test-Ride Lead Gen Search',
+        channel: 'Google Search',
+        status: 'Active',
+        leads: 890,
+        engagement: '5.4%',
+        roi: '392%',
+        progress: 64,
+        milestone: 'Landing Page CRO · Nov 23',
+      },
+      {
+        client: 'Nila Jewellery',
+        initials: 'NJ',
+        badgeColor: 'bg-amber-100 text-amber-700',
+        project: 'Bridal Lookbook Social Push',
+        channel: 'Instagram & Meta',
+        status: 'In Review',
+        leads: 620,
+        engagement: '9.1%',
+        roi: '510%',
+        progress: 90,
+        milestone: 'Client Sign-off · Nov 19',
+      },
+      {
+        client: 'Aether Cloud',
+        initials: 'AC',
+        badgeColor: 'bg-violet-100 text-violet-700',
+        project: 'Enterprise SaaS ABM Funnel',
+        channel: 'LinkedIn B2B',
+        status: 'Optimization',
+        leads: 412,
+        engagement: '4.6%',
+        roi: '340%',
+        progress: 52,
+        milestone: 'Audience Bid Tuning · Nov 25',
+      },
+      {
+        client: 'Zestify Foods',
+        initials: 'ZF',
+        badgeColor: 'bg-rose-100 text-rose-700',
+        project: 'Organic SEO & Email Drip',
+        channel: 'SEO & Content',
+        status: 'Completed',
+        leads: 780,
+        engagement: '6.9%',
+        roi: '425%',
+        progress: 100,
+        milestone: 'Q4 Wrap Report Delivered',
+      },
+    ];
+
+    const statusStyles = {
+      Active: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+      'In Review': 'bg-amber-50 text-amber-700 ring-amber-600/20',
+      Optimization: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+      Completed: 'bg-slate-100 text-slate-600 ring-slate-500/20',
+    };
+
+    const tableBody = document.getElementById('projectTableBody');
+    const tableSearch = document.getElementById('tableSearch');
+    const globalSearch = document.getElementById('globalSearch');
+    const statusFilter = document.getElementById('statusFilter');
+    const clientFilter = document.getElementById('clientFilter');
+
+    function renderTable() {
+      const query = (tableSearch.value || globalSearch.value).trim().toLowerCase();
+      const status = statusFilter.value;
+      const clientScope = clientFilter.value;
+
+      const filtered = projectsData.filter((item) => {
+        const matchesQuery =
+          !query ||
+          item.client.toLowerCase().includes(query) ||
+          item.project.toLowerCase().includes(query) ||
+          item.channel.toLowerCase().includes(query);
+        const matchesStatus = status === 'all' || item.status === status;
+        const matchesClient = clientScope === 'all' || item.client === clientScope;
+        return matchesQuery && matchesStatus && matchesClient;
+      });
+
+      if (filtered.length === 0) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="8" class="py-10 text-center text-sm text-slate-400">
+              No client projects match the current filter.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tableBody.innerHTML = filtered
+        .map(
+          (item) => `
+        <tr class="hover:bg-slate-50/80 transition">
+          <td class="py-3.5 px-5">
+            <div class="flex items-center gap-3">
+              <div class="h-9 w-9 rounded-xl ${item.badgeColor} flex items-center justify-center text-xs font-bold shrink-0">
+                ${item.initials}
+              </div>
+              <div>
+                <p class="font-semibold text-slate-900 leading-tight">${item.client}</p>
+                <p class="text-xs text-slate-500 mt-0.5">${item.project}</p>
+              </div>
+            </div>
+          </td>
+          <td class="py-3.5 px-4 text-xs font-medium text-slate-600">${item.channel}</td>
+          <td class="py-3.5 px-4">
+            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${statusStyles[item.status] || statusStyles.Active}">
+              ${item.status}
+            </span>
+          </td>
+          <td class="py-3.5 px-4 font-semibold text-slate-800">${item.leads.toLocaleString()}</td>
+          <td class="py-3.5 px-4 text-slate-700 font-medium">${item.engagement}</td>
+          <td class="py-3.5 px-4 font-semibold text-emerald-600">${item.roi}</td>
+          <td class="py-3.5 px-4 min-w-[130px]">
+            <div class="flex items-center gap-2">
+              <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${item.progress}%"></div>
+              </div>
+              <span class="text-xs font-medium text-slate-600 w-8 text-right">${item.progress}%</span>
+            </div>
+          </td>
+          <td class="py-3.5 px-5 text-right text-xs text-slate-500">${item.milestone}</td>
+        </tr>`
+        )
+        .join('');
+    }
+
+    tableSearch.addEventListener('input', renderTable);
+    globalSearch.addEventListener('input', renderTable);
+    statusFilter.addEventListener('change', renderTable);
+    clientFilter.addEventListener('change', renderTable);
+    renderTable();
+
+    // Chart.js: ROI & Lead Generation Line Chart
+    const chartDatasets = {
+      daily: {
+        labels: ['Nov 12', 'Nov 13', 'Nov 14', 'Nov 15', 'Nov 16', 'Nov 17', 'Nov 18'],
+        leads: [185, 210, 198, 245, 270, 260, 312],
+        roi: [360, 385, 372, 405, 420, 415, 448],
+      },
+      weekly: {
+        labels: ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4', 'Wk 5', 'Wk 6', 'Wk 7', 'Wk 8'],
+        leads: [620, 710, 690, 840, 910, 880, 965, 1080],
+        roi: [340, 355, 368, 390, 402, 398, 412, 435],
+      },
+      monthly: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'],
+        leads: [1950, 2180, 2340, 2490, 2620, 2980, 2890, 3120, 3380, 3610, 3842],
+        roi: [290, 310, 325, 340, 338, 370, 365, 382, 395, 408, 418],
+      },
+    };
+
+    const roiLeadsCtx = document.getElementById('roiLeadsChart').getContext('2d');
+    const roiLeadsChart = new Chart(roiLeadsCtx, {
+      type: 'line',
+      data: {
+        labels: chartDatasets.monthly.labels,
+        datasets: [
+          {
+            label: 'Qualified Leads',
+            data: chartDatasets.monthly.leads,
+            borderColor: '#2563EB',
+            backgroundColor: 'rgba(37, 99, 235, 0.08)',
+            borderWidth: 2.5,
+            tension: 0.35,
+            fill: true,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            yAxisID: 'y',
+          },
+          {
+            label: 'Campaign ROI (%)',
+            data: chartDatasets.monthly.roi,
+            borderColor: '#8B5CF6',
+            backgroundColor: 'transparent',
+            borderWidth: 2.5,
+            tension: 0.35,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            yAxisID: 'y1',
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'top',
+            align: 'end',
+            labels: { usePointStyle: true, boxWidth: 8, font: { size: 12, family: 'Inter' } },
+          },
+          tooltip: {
+            backgroundColor: '#0F172A',
+            padding: 10,
+            cornerRadius: 10,
+            titleFont: { size: 12, family: 'Inter' },
+            bodyFont: { size: 12, family: 'Inter' },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 11 } } },
+          y: {
+            type: 'linear',
+            position: 'left',
+            grid: { color: '#F1F5F9' },
+            ticks: { color: '#64748B', font: { size: 11 } },
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: {
+              color: '#8B5CF6',
+              font: { size: 11 },
+              callback: (val) => val + '%',
+            },
+          },
+        },
+      },
+    });
+
+    document.querySelectorAll('.range-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.range-btn').forEach((b) => {
+          b.className = 'range-btn px-3 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition';
+        });
+        btn.className = 'range-btn px-3 py-1 rounded-lg text-xs font-semibold bg-white text-blue-600 shadow-xs transition';
+        const dataset = chartDatasets[btn.dataset.range];
+        roiLeadsChart.data.labels = dataset.labels;
+        roiLeadsChart.data.datasets[0].data = dataset.leads;
+        roiLeadsChart.data.datasets[1].data = dataset.roi;
+        roiLeadsChart.update();
+      });
+    });
+
+    // Chart.js: Channel Engagement Donut
+    new Chart(document.getElementById('channelDonutChart').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Instagram & Reels', 'LinkedIn B2B', 'Meta & Google Ads', 'SEO & Email'],
+        datasets: [
+          {
+            data: [34.2, 27.8, 22.5, 15.5],
+            backgroundColor: ['#2563EB', '#8B5CF6', '#10B981', '#FBBF24'],
+            borderWidth: 0,
+            hoverOffset: 4,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '72%',
+        plugins: { legend: { display: false } },
+      },
+    });
+
+    // Export CSV
+    document.getElementById('exportCsvBtn').addEventListener('click', () => {
+      const headers = ['Client', 'Project', 'Channel', 'Status', 'Leads', 'Engagement', 'ROI', 'Progress', 'Milestone'];
+      const rows = projectsData.map((p) =>
+        [p.client, p.project, p.channel, p.status, p.leads, p.engagement, p.roi, p.progress + '%', p.milestone]
+          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+          .join(',')
+      );
+      const csv = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'minmurasu-client-crm.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Mobile Sidebar Drawer
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const toggleSidebar = (open) => {
+      sidebar.classList.toggle('-translate-x-full', !open);
+      backdrop.classList.toggle('hidden', !open);
+    };
+    document.getElementById('openSidebarBtn').addEventListener('click', () => toggleSidebar(true));
+    document.getElementById('closeSidebarBtn').addEventListener('click', () => toggleSidebar(false));
+    backdrop.addEventListener('click', () => toggleSidebar(false));
+
+    // Modal for adding a new client campaign
+    const modal = document.getElementById('campaignModal');
+    const toggleModal = (open) => {
+      modal.classList.toggle('hidden', !open);
+      modal.classList.toggle('flex', open);
+    };
+    document.getElementById('openModalBtn').addEventListener('click', () => toggleModal(true));
+    document.getElementById('closeModalBtn').addEventListener('click', () => toggleModal(false));
+    document.getElementById('cancelModalBtn').addEventListener('click', () => toggleModal(false));
+
+    document.getElementById('newCampaignForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const client = document.getElementById('newClient').value.trim();
+      const project = document.getElementById('newProject').value.trim();
+      const channel = document.getElementById('newChannel').value;
+      const status = document.getElementById('newStatus').value;
+      if (!client || !project) return;
+
+      const initials = client
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((w) => w[0].toUpperCase())
+        .join('');
+
+      projectsData.unshift({
+        client,
+        initials,
+        badgeColor: 'bg-blue-100 text-blue-700',
+        project,
+        channel,
+        status,
+        leads: 0,
+        engagement: '0.0%',
+        roi: '—',
+        progress: 10,
+        milestone: 'Kickoff Scheduled',
+      });
+      renderTable();
+      e.target.reset();
+      toggleModal(false);
+    });
+  </script>
+</body>
+</html>
