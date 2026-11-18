@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
 import type { UserRole } from '@/lib/auth/rbac';
 
@@ -70,6 +71,8 @@ export async function getDashboardData(filters?: {
   clientId?: string;
   search?: string;
 }): Promise<DashboardPayload> {
+  await connection();
+
   if (!isSupabaseConfigured()) {
     return {
       configured: false,
