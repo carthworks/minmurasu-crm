@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   BarChart3,
   Bell,
+  BookOpen,
   Briefcase,
   CalendarDays,
   CheckSquare,
@@ -101,6 +102,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Billing & Invoices', href: '/billing', icon: CreditCard },
       { label: 'Integrations', href: '/settings/integrations', icon: Plug, agencyOnly: true },
       { label: 'Notifications', href: '/notifications', icon: Bell },
+      { label: 'How-To Guide', href: '/help', icon: BookOpen },
       { label: 'Settings', href: '/settings', icon: Settings },
     ],
   },
