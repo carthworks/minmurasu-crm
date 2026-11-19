@@ -1,15 +1,6 @@
 import { cache } from 'react';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
-import type { UserContext, UserRole } from '@/lib/auth/rbac';
-
-const ROLE_PRIORITY: Record<UserRole, number> = {
-  super_admin: 0,
-  agency_admin: 1,
-  marketing_manager: 2,
-  sales_bd: 3,
-  team_member: 4,
-  client: 5,
-};
+import { pickMembership, type UserContext, type UserRole } from '@/lib/auth/rbac';
 
 /**
  * The signed-in user's profile and active organization membership.
@@ -19,7 +10,7 @@ const ROLE_PRIORITY: Record<UserRole, number> = {
  *
  * A user can belong to more than one organization. Previously `.maybeSingle()` errored
  * in that case and the user was treated as signed out. Now the membership is chosen
- * deterministically: highest-privilege role first, then the oldest membership.
+ * deterministically by `pickMembership` (highest-privilege role, then oldest).
  */
 export const getCurrentUserContext = cache(async (): Promise<UserContext | null> => {
   if (!isSupabaseConfigured()) return null;
@@ -45,12 +36,9 @@ export const getCurrentUserContext = cache(async (): Promise<UserContext | null>
     console.error('[session] membership lookup failed', error.code);
     return null;
   }
-  if (!memberships || memberships.length === 0) return null;
 
-  const membership = [...memberships].sort(
-    (a, b) =>
-      (ROLE_PRIORITY[a.role as UserRole] ?? 99) - (ROLE_PRIORITY[b.role as UserRole] ?? 99)
-  )[0];
+  const membership = pickMembership(memberships);
+  if (!membership) return null;
 
   return {
     userId: user.id,
