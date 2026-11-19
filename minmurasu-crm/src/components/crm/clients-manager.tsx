@@ -376,11 +376,16 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
       {/* Add Client Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-brand-navy rounded-2xl border border-slate-200 dark:border-white/15 shadow-xl max-w-lg w-full p-6 space-y-4">
+          <div className="bg-white dark:bg-brand-navy rounded-2xl border border-slate-200 dark:border-white/15 shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-lg font-bold text-brand-navy dark:text-white">
-                Add New Client
-              </h3>
+              <div>
+                <h3 className="font-display text-lg font-bold text-brand-navy dark:text-white">
+                  Add New Client
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Onboard company, retainer terms, and primary point of contact in one step.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
@@ -390,23 +395,37 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold mb-1">Company Name *</label>
-                <input
-                  name="name"
-                  required
-                  placeholder="e.g., Kovai Precision Works"
-                  className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
-                />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold mb-1">Company Name *</label>
+                  <input
+                    name="name"
+                    required
+                    placeholder="e.g., Kovai Precision Works"
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Status</label>
+                  <select
+                    name="status"
+                    defaultValue="onboarding"
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
+                  >
+                    <option value="onboarding">Onboarding</option>
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold mb-1">Industry</label>
                   <input
                     name="industry"
-                    placeholder="Healthcare / Manufacturing"
+                    placeholder="Healthcare / B2B"
                     className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
                   />
                 </div>
@@ -418,9 +437,17 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
                     className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Website</label>
+                  <input
+                    name="website"
+                    placeholder="https://example.com"
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold mb-1">Monthly Retainer (INR)</label>
                   <input
@@ -441,11 +468,65 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Contract Start</label>
+                  <input
+                    name="contract_start"
+                    type="date"
+                    defaultValue={new Date().toISOString().slice(0, 10)}
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Contract End</label>
+                  <input
+                    name="contract_end"
+                    type="date"
+                    className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-white/10 space-y-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-brand-blue">
+                  Primary Decision Maker (Auto-added to Contacts)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Contact Name</label>
+                    <input
+                      name="primary_contact_name"
+                      placeholder="Senthil Nathan"
+                      className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Email</label>
+                    <input
+                      name="primary_contact_email"
+                      type="email"
+                      placeholder="senthil@company.com"
+                      className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Phone / WhatsApp</label>
+                    <input
+                      name="primary_contact_phone"
+                      placeholder="+91 98765 43210"
+                      className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-semibold mb-1">Website</label>
-                <input
-                  name="website"
-                  placeholder="https://example.com"
+                <label className="block text-xs font-semibold mb-1">Onboarding Goals &amp; Notes</label>
+                <textarea
+                  name="internal_notes"
+                  rows={2}
+                  placeholder="Target CPL, key markets, or priority deliverables..."
                   className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm"
                 />
               </div>

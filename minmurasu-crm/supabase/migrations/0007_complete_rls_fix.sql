@@ -1,6 +1,76 @@
 -- Comprehensive, idempotent RLS policy fix across all CRM, Operations, Billing, and Audit tables
 -- Ensures every table has explicit USING + WITH CHECK clauses for agency staff
 
+-- Organizations (allow admins to update organization profile in Settings)
+DROP POLICY IF EXISTS "Admins update organization" ON organizations;
+CREATE POLICY "Admins update organization" ON organizations
+  FOR UPDATE
+  USING (is_org_admin(id))
+  WITH CHECK (is_org_admin(id));
+
+-- Phase 1 & 2 Core CRM tables
+DROP POLICY IF EXISTS "Agency staff manage clients" ON clients;
+CREATE POLICY "Agency staff manage clients" ON clients
+  FOR ALL
+  USING (is_agency_staff(organization_id))
+  WITH CHECK (is_agency_staff(organization_id));
+
+DROP POLICY IF EXISTS "Client contacts read isolation" ON client_contacts;
+CREATE POLICY "Client contacts read isolation" ON client_contacts
+  FOR SELECT
+  USING (
+    is_agency_staff(organization_id)
+    OR is_client_member_for(organization_id, client_id)
+  );
+
+DROP POLICY IF EXISTS "Agency staff manage client contacts" ON client_contacts;
+CREATE POLICY "Agency staff manage client contacts" ON client_contacts
+  FOR ALL
+  USING (is_agency_staff(organization_id))
+  WITH CHECK (is_agency_staff(organization_id));
+
+DROP POLICY IF EXISTS "Agency staff prospects" ON prospects;
+CREATE POLICY "Agency staff prospects" ON prospects
+  FOR ALL
+  USING (is_agency_staff(organization_id))
+  WITH CHECK (is_agency_staff(organization_id));
+
+DROP POLICY IF EXISTS "Agency staff manage leads" ON leads;
+CREATE POLICY "Agency staff manage leads" ON leads
+  FOR ALL
+  USING (is_agency_staff(organization_id))
+  WITH CHECK (is_agency_staff(organization_id));
+
+DROP POLICY IF EXISTS "Agency staff manage lead activities" ON lead_activities;
+CREATE POLICY "Agency staff manage lead activities" ON lead_activities
+  FOR ALL
+  USING (is_agency_staff(organization_id))
+  WITH CHECK (is_agency_staff(organization_id));
+
+DROP POLICY IF EXISTS "Agency staff manage campaigns" ON campaigns;
+CREATE POLICY "Agency staff manage campaigns" ON campaigns
+  FOR ALL
+  USING (is_agency_staff(organization_id))
+  WITH CHECK (is_agency_staff(organization_id));
+
+DROP POLICY IF EXISTS "Agency staff manage campaign metrics" ON campaign_metrics;
+CREATE POLICY "Agency staff manage campaign metrics" ON campaign_metrics
+  FOR ALL
+  USING (is_agency_staff(organization_id))
+  WITH CHECK (is_agency_staff(organization_id));
+
+DROP POLICY IF EXISTS "Agency staff manage projects" ON projects;
+CREATE POLICY "Agency staff manage projects" ON projects
+  FOR ALL
+  USING (is_agency_staff(organization_id))
+  WITH CHECK (is_agency_staff(organization_id));
+
+DROP POLICY IF EXISTS "Agency staff manage tasks" ON tasks;
+CREATE POLICY "Agency staff manage tasks" ON tasks
+  FOR ALL
+  USING (is_agency_staff(organization_id))
+  WITH CHECK (is_agency_staff(organization_id));
+
 -- Audit Logs (allow org members to insert audit entries, agency staff to read)
 DROP POLICY IF EXISTS "Agency staff insert audit logs" ON audit_logs;
 CREATE POLICY "Agency staff insert audit logs" ON audit_logs

@@ -11,11 +11,19 @@ const clientSchema = z.object({
   industry: z.string().trim().optional(),
   website: z.string().trim().optional(),
   location: z.string().trim().optional(),
+  contract_start: z.string().optional(),
+  contract_end: z.string().optional(),
   monthly_retainer_inr: z.coerce.number().min(0).default(0),
   service_package: z.string().trim().optional(),
   status: z.enum(['active', 'onboarding', 'paused', 'churned']).default('active'),
   internal_notes: z.string().trim().optional(),
+  primary_contact_name: z.string().trim().optional(),
+  primary_contact_email: z.string().trim().email('Invalid contact email').optional().or(z.literal('')),
+  primary_contact_phone: z.string().trim().optional(),
 });
+
+const uuidField = (msg = 'Invalid ID') =>
+  z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, msg);
 
 const leadSchema = z.object({
   name: z.string().trim().min(2, 'Lead name is required'),
@@ -24,7 +32,7 @@ const leadSchema = z.object({
   email: z.string().trim().email('Invalid email').optional().or(z.literal('')),
   interested_service: z.string().trim().optional(),
   source: z.string().trim().default('manual'),
-  client_id: z.string().uuid().optional().or(z.literal('')),
+  client_id: uuidField().optional().or(z.literal('')),
   lead_score: z.coerce.number().min(0).max(100).default(50),
   budget_inr: z.coerce.number().min(0).optional(),
   expected_deal_value_inr: z.coerce.number().min(0).optional(),
@@ -48,7 +56,7 @@ const prospectSchema = z.object({
 });
 
 const contactSchema = z.object({
-  client_id: z.string().uuid('Select a valid client'),
+  client_id: uuidField('Select a valid client'),
   full_name: z.string().trim().min(2, 'Contact name is required'),
   role_title: z.string().trim().optional(),
   email: z.string().trim().email('Invalid email').optional().or(z.literal('')),
@@ -68,27 +76,54 @@ export async function createClientAction(formData: FormData) {
     industry: formData.get('industry') || undefined,
     website: formData.get('website') || undefined,
     location: formData.get('location') || undefined,
+    contract_start: formData.get('contract_start') || undefined,
+    contract_end: formData.get('contract_end') || undefined,
     monthly_retainer_inr: formData.get('monthly_retainer_inr') || 0,
     service_package: formData.get('service_package') || undefined,
     status: formData.get('status') || 'active',
     internal_notes: formData.get('internal_notes') || undefined,
+    primary_contact_name: formData.get('primary_contact_name') || undefined,
+    primary_contact_email: formData.get('primary_contact_email') || '',
+    primary_contact_phone: formData.get('primary_contact_phone') || undefined,
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Invalid client data.' };
   }
 
+  const {
+    primary_contact_name,
+    primary_contact_email,
+    primary_contact_phone,
+    ...clientFields
+  } = parsed.data;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('clients')
     .insert({
       organization_id: ctx.organizationId,
-      ...parsed.data,
+      ...clientFields,
+      contract_start: clientFields.contract_start || null,
+      contract_end: clientFields.contract_end || null,
+      account_manager_id: ctx.userId,
     })
     .select('id')
     .single();
 
   if (error) return { error: error.message };
+
+  if (primary_contact_name) {
+    await supabase.from('client_contacts').insert({
+      organization_id: ctx.organizationId,
+      client_id: data.id,
+      full_name: primary_contact_name,
+      email: primary_contact_email || null,
+      phone: primary_contact_phone || null,
+      whatsapp_number: primary_contact_phone || null,
+      is_primary: true,
+    });
+  }
 
   await supabase.from('audit_logs').insert({
     organization_id: ctx.organizationId,
@@ -100,6 +135,7 @@ export async function createClientAction(formData: FormData) {
   });
 
   revalidatePath('/clients');
+  revalidatePath('/contacts');
   revalidatePath('/');
   return { success: true, id: data.id };
 }

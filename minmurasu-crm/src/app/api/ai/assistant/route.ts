@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getCurrentUserContext } from '@/lib/auth/session';
 import { getDashboardData } from '@/lib/queries/dashboard';
+import { checkRateLimit } from '@/lib/security/rate-limit';
 
 const requestSchema = z.object({
   prompt: z.string().trim().min(2).max(1000),
@@ -12,6 +13,14 @@ export async function POST(request: Request) {
   const ctx = await getCurrentUserContext();
   if (!ctx) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const rl = checkRateLimit(`ai:${ctx.userId}`, 15, 60_000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+      { status: 429 }
+    );
   }
 
   let body: unknown;

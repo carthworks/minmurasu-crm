@@ -6,9 +6,12 @@ import { createClient } from '@/lib/supabase/server';
 import { getCurrentUserContext } from '@/lib/auth/session';
 import { canManageCampaigns, isAgencyStaffRole } from '@/lib/auth/rbac';
 
+const uuidField = (msg = 'Invalid ID') =>
+  z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, msg);
+
 const campaignSchema = z.object({
-  client_id: z.string().uuid('Select a valid client'),
-  channel_id: z.string().uuid().optional().or(z.literal('')),
+  client_id: uuidField('Select a valid client'),
+  channel_id: uuidField().optional().or(z.literal('')),
   name: z.string().trim().min(2, 'Campaign name is required'),
   objective: z.string().trim().optional(),
   budget_inr: z.coerce.number().min(0).default(0),
@@ -18,8 +21,8 @@ const campaignSchema = z.object({
 });
 
 const metricSchema = z.object({
-  campaign_id: z.string().uuid(),
-  client_id: z.string().uuid(),
+  campaign_id: uuidField('Invalid campaign ID'),
+  client_id: uuidField('Invalid client ID'),
   metric_date: z.string().min(8),
   spend_inr: z.coerce.number().min(0).default(0),
   impressions: z.coerce.number().min(0).default(0),
@@ -32,15 +35,15 @@ const metricSchema = z.object({
 });
 
 const projectSchema = z.object({
-  client_id: z.string().uuid('Select a valid client'),
+  client_id: uuidField('Select a valid client'),
   name: z.string().trim().min(2, 'Project name is required'),
   description: z.string().trim().optional(),
   due_date: z.string().optional(),
 });
 
 const taskSchema = z.object({
-  project_id: z.string().uuid('Select a valid project'),
-  client_id: z.string().uuid('Select a valid client'),
+  project_id: uuidField('Select a valid project'),
+  client_id: uuidField('Select a valid client'),
   title: z.string().trim().min(2, 'Task title is required'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   status: z
@@ -50,7 +53,7 @@ const taskSchema = z.object({
 });
 
 const socialPostSchema = z.object({
-  client_id: z.string().uuid('Select a valid client'),
+  client_id: uuidField('Select a valid client'),
   title: z.string().trim().min(2, 'Post title is required'),
   caption: z.string().trim().optional(),
   scheduled_at: z.string().optional(),
@@ -362,7 +365,7 @@ export async function updateMemberRoleAction(input: {
 }
 
 const invoiceSchema = z.object({
-  client_id: z.string().uuid('Select a valid client'),
+  client_id: uuidField('Select a valid client'),
   invoice_number: z.string().trim().min(3, 'Invoice number is required'),
   amount_inr: z.coerce.number().positive('Amount must be greater than 0'),
   due_date: z.string().min(8, 'Due date is required'),

@@ -1,9 +1,10 @@
-import { Suspense } from 'react';
+import { ClientProfileTabs } from '@/components/crm/client-profile-tabs';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
+import { safeHttpUrl } from '@/lib/utils';
+import { ArrowLeft, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Globe } from 'lucide-react';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
-import { ClientProfileTabs } from '@/components/crm/client-profile-tabs';
+import { Suspense } from 'react';
 
 async function ClientDetailContent({
   params,
@@ -85,9 +86,9 @@ async function ClientDetailContent({
           </p>
         </div>
 
-        {client.website && (
+        {safeHttpUrl(client.website) && (
           <a
-            href={client.website}
+            href={safeHttpUrl(client.website)!}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-3.5 py-2 text-xs font-medium text-brand-navy dark:text-white hover:border-brand-blue transition self-start"
