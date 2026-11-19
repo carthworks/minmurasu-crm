@@ -33,14 +33,11 @@ export async function getAiProviderStatus(
   if (organizationId && isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
-      const { data } = await supabase
-        .from('integrations')
-        .select('config')
-        .eq('organization_id', organizationId)
-        .eq('provider', 'ollama')
-        .maybeSingle();
+      // `integrations` is admin-only (migration 0008); this RPC (0010) exposes just the
+      // non-secret Ollama base_url/model to all agency staff.
+      const { data } = await supabase.rpc('get_ollama_config', { p_org_id: organizationId });
 
-      const cfg = (data?.config ?? {}) as { base_url?: string; model?: string };
+      const cfg = (data ?? {}) as { base_url?: string | null; model?: string | null };
       if (cfg.base_url) ollamaBaseUrl = cfg.base_url.replace(/\/$/, '');
       if (cfg.model) ollamaSelectedModel = cfg.model;
     } catch {

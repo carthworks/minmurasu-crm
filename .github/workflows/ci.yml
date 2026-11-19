@@ -70,7 +70,12 @@ jobs:
           for f in $(ls supabase/migrations/*.sql | tail -n 2); do
             psql -v ON_ERROR_STOP=1 -q -f "$f"
           done
-      - name: Run RLS / RPC tests
-        run: psql -v ON_ERROR_STOP=1 -P pager=off -f supabase/tests/10_rls_and_rpcs.test.sql
+      - name: Run database tests (in order, same database)
+        run: |
+          for f in supabase/tests/*.test.sql; do
+            echo "::group::$f"
+            psql -v ON_ERROR_STOP=1 -P pager=off -f "$f"
+            echo "::endgroup::"
+          done
       - name: Seed data loads
         run: psql -v ON_ERROR_STOP=1 -q -f supabase/seed.sql

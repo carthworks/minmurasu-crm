@@ -10,12 +10,14 @@ import { formatINR, formatNumber } from '@/lib/utils';
 async function DashboardContent({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; q?: string }>;
+  searchParams: Promise<{ clientId?: string; q?: string; from?: string; to?: string }>;
 }) {
   const params = await searchParams;
   const data = await getDashboardData({
     clientId: params.clientId,
     search: params.q,
+    from: params.from,
+    to: params.to,
   });
 
   return (
@@ -132,7 +134,7 @@ async function DashboardContent({
 export default function ExecutiveDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; q?: string }>;
+  searchParams: Promise<{ clientId?: string; q?: string; from?: string; to?: string }>;
 }) {
   return (
     <Suspense fallback={<div className="p-6 text-sm text-brand-slate">Loading Executive Dashboard...</div>}>

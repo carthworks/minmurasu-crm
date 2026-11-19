@@ -1,9 +1,9 @@
 import { Suspense } from 'react';
 import { DashboardShell } from '@/components/layout/dashboard-shell';
-import { getDashboardData } from '@/lib/queries/dashboard';
+import { getShellData } from '@/lib/queries/dashboard';
 
 async function DashboardShellLoader({ children }: { children: React.ReactNode }) {
-  const data = await getDashboardData();
+  const data = await getShellData();
 
   return (
     <DashboardShell

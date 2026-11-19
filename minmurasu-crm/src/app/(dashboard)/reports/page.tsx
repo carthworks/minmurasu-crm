@@ -5,11 +5,11 @@ import { ReportsView } from '@/components/analytics/reports-view';
 async function ReportsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string }>;
+  searchParams: Promise<{ clientId?: string; from?: string; to?: string }>;
 }) {
   const params = await searchParams;
   const selectedClientId = params.clientId ?? 'all';
-  const data = await getDashboardData({ clientId: selectedClientId });
+  const data = await getDashboardData({ clientId: selectedClientId, from: params.from, to: params.to });
 
   const matchedClient = data.clients.find((c) => c.id === selectedClientId);
   const selectedClientName = matchedClient?.name ?? 'All Active Clients';
@@ -27,7 +27,7 @@ async function ReportsContent({
 export default function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string }>;
+  searchParams: Promise<{ clientId?: string; from?: string; to?: string }>;
 }) {
   return (
     <Suspense fallback={<div className="p-6 text-sm text-brand-slate">Generating report...</div>}>
