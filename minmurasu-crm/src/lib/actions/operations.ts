@@ -532,3 +532,137 @@ export async function recordPaymentAction(formData: FormData) {
     balanceInr: result ? Number(result.balance_inr) : null,
   };
 }
+
+export async function updateOllamaSettingsAction(formData: FormData) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx || (ctx.role !== 'super_admin' && ctx.role !== 'agency_admin')) {
+    return { error: 'Unauthorized: admin access required.' };
+  }
+
+  const baseUrl = String(formData.get('ollama_base_url') ?? 'http://127.0.0.1:11434')
+    .trim()
+    .replace(/\/$/, '');
+  const model = String(formData.get('ollama_model') ?? '').trim();
+
+  try {
+    const parsed = new URL(baseUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return { error: 'Ollama Base URL must use http:// or https://' };
+    }
+  } catch {
+    return { error: 'Enter a valid Ollama Base URL (e.g. http://127.0.0.1:11434).' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('integrations').upsert(
+    {
+      organization_id: ctx.organizationId,
+      provider: 'ollama',
+      status: 'configured',
+      config: { base_url: baseUrl, model },
+    },
+    { onConflict: 'organization_id,provider' }
+  );
+
+  if (error) return { error: toUserError(error, 'operations') };
+
+  revalidatePath('/settings');
+  revalidatePath('/settings/integrations');
+  return { success: true };
+}
+
+const deliverableSchema = z.object({
+  project_id: uuidField('Select a valid project'),
+  client_id: uuidField('Select a valid client'),
+  title: z.string().trim().min(2, 'Deliverable title is required'),
+  file_url: z.string().trim().optional(),
+  status: z
+    .enum(['pending_review', 'in_review', 'approved', 'changes_requested', 'delivered'])
+    .default('pending_review'),
+});
+
+export async function createDeliverableAction(formData: FormData) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx || !isAgencyStaffRole(ctx.role)) {
+    return { error: 'Unauthorized: agency staff access required.' };
+  }
+
+  const parsed = deliverableSchema.safeParse({
+    project_id: formData.get('project_id'),
+    client_id: formData.get('client_id'),
+    title: formData.get('title'),
+    file_url: formData.get('file_url') || undefined,
+    status: formData.get('status') || 'pending_review',
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Invalid deliverable data.' };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('deliverables')
+    .insert({
+      organization_id: ctx.organizationId,
+      project_id: parsed.data.project_id,
+      client_id: parsed.data.client_id,
+      title: parsed.data.title,
+      file_url: parsed.data.file_url || null,
+      uploaded_by: ctx.userId,
+      status: parsed.data.status,
+    })
+    .select('id')
+    .single();
+
+  if (error) return { error: toUserError(error, 'operations') };
+
+  if (parsed.data.status === 'pending_review') {
+    await supabase.from('client_approvals').insert({
+      organization_id: ctx.organizationId,
+      client_id: parsed.data.client_id,
+      deliverable_id: data.id,
+      status: 'pending',
+    });
+  }
+
+  revalidatePath('/deliverables');
+  revalidatePath('/approvals');
+  revalidatePath('/');
+  return { success: true };
+}
+
+export async function updateDeliverableStatusAction(
+  deliverableId: string,
+  status: 'pending_review' | 'in_review' | 'approved' | 'changes_requested' | 'delivered'
+) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx) return { error: 'Unauthorized' };
+
+  if (!isUuid(deliverableId)) return { error: 'Invalid deliverable.' };
+  if (!deliverableSchema.shape.status.safeParse(status).success) {
+    return { error: 'Invalid status.' };
+  }
+
+  const supabase = await createClient();
+  let query = supabase
+    .from('deliverables')
+    .update({ status })
+    .eq('id', deliverableId)
+    .eq('organization_id', ctx.organizationId);
+  // Client users may only act on their own client's deliverables.
+  if (ctx.role === 'client') {
+    if (!ctx.clientId) return { error: 'Unauthorized' };
+    query = query.eq('client_id', ctx.clientId);
+  }
+  const { data: updated, error } = await query.select('id');
+
+  if (error) return { error: toUserError(error, 'updateDeliverableStatus') };
+  if (!updated?.length) {
+    return { error: 'Deliverable not found or you no longer have access to it.' };
+  }
+
+  revalidatePath('/deliverables');
+  revalidatePath('/approvals');
+  revalidatePath('/');
+  return { success: true };
+}

@@ -11,7 +11,7 @@ const QUICK_PROMPTS = [
 
 export function AiAssistantPanel({ clientId }: { clientId?: string }) {
   const [prompt, setPrompt] = useState('');
-  const [reply, setReply] = useState<string | null>(null);
+  const [reply, setReply] = useState<{ text: string; meta?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -27,11 +27,19 @@ export function AiAssistantPanel({ clientId }: { clientId?: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: text, clientId }),
       });
-      const json = (await res.json()) as { advisory?: string; error?: string };
+      const json = (await res.json()) as {
+        advisory?: string;
+        provider?: string;
+        model?: string;
+        error?: string;
+      };
       if (!res.ok) {
         setError(json.error ?? 'Failed to generate insights.');
       } else {
-        setReply(json.advisory ?? '');
+        setReply({
+          text: json.advisory ?? '',
+          meta: json.provider && json.model ? `${json.provider.toUpperCase()} · ${json.model}` : undefined,
+        });
       }
     } catch {
       setError('Network error while contacting AI endpoint.');
@@ -50,7 +58,7 @@ export function AiAssistantPanel({ clientId }: { clientId?: string }) {
           <div>
             <h2 className="font-display text-base font-bold">MIN MURASU AI Marketing Assistant</h2>
             <p className="text-xs text-slate-400">
-              Server-side OpenAI insights grounded in RLS-scoped measured records
+              Server-side OpenAI insights (with automatic local Ollama fallback) grounded in RLS-scoped records
             </p>
           </div>
         </div>
@@ -107,10 +115,17 @@ export function AiAssistantPanel({ clientId }: { clientId?: string }) {
 
       {reply && (
         <div className="rounded-xl border border-brand-blue/25 bg-brand-blue/5 p-4 text-xs leading-relaxed whitespace-pre-wrap">
-          <p className="font-bold uppercase tracking-wider text-brand-blue mb-2">
-            AI Recommendations (Advisory — Distinct from Measured Metrics)
-          </p>
-          {reply}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="font-bold uppercase tracking-wider text-brand-blue">
+              AI Recommendations (Advisory — Distinct from Measured Metrics)
+            </p>
+            {reply.meta && (
+              <span className="rounded-md bg-brand-blue/10 text-brand-blue px-2 py-0.5 text-[10px] font-bold">
+                {reply.meta}
+              </span>
+            )}
+          </div>
+          {reply.text}
         </div>
       )}
     </div>
