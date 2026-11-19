@@ -16,21 +16,39 @@ export async function GET(request: Request) {
   return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 }
 
-export async function POST(request: Request) {
-  const rawBody = await request.text();
-  const signatureHeader = request.headers.get('x-hub-signature-256');
-  const appSecret = process.env.WHATSAPP_APP_SECRET;
+// Meta webhook payloads are small; anything larger is rejected before hashing.
+const MAX_BODY_BYTES = 1_000_000;
 
-  let signatureVerified = false;
-  if (appSecret && signatureHeader) {
-    const expected =
-      'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
-    const a = Buffer.from(signatureHeader);
-    const b = Buffer.from(expected);
-    signatureVerified = a.length === b.length && crypto.timingSafeEqual(a, b);
-    if (!signatureVerified) {
-      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
-    }
+export async function POST(request: Request) {
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  if (!appSecret) {
+    // Fail closed: never accept unsigned payloads, even if the secret is misconfigured.
+    console.error('WHATSAPP_APP_SECRET is not set; rejecting WhatsApp webhook.');
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+  }
+
+  const signatureHeader = request.headers.get('x-hub-signature-256');
+  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) {
+    return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 });
+  }
+
+  const declaredLength = Number(request.headers.get('content-length') ?? 0);
+  if (declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+  }
+
+  const rawBody = await request.text();
+  if (Buffer.byteLength(rawBody) > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+  }
+
+  const expected =
+    'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+  const a = Buffer.from(signatureHeader);
+  const b = Buffer.from(expected);
+  const signatureVerified = a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!signatureVerified) {
+    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
   }
 
   let payload: Record<string, unknown>;

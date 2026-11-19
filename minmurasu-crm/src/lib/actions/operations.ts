@@ -338,7 +338,55 @@ export async function updateMemberRoleAction(input: {
     return { error: 'Invalid role selected.' };
   }
 
+  if (!uuidField().safeParse(input.memberId).success) {
+    return { error: 'Invalid member.' };
+  }
+  if (input.role === 'client' && !uuidField().safeParse(input.clientId ?? '').success) {
+    return { error: 'Select the client this user belongs to.' };
+  }
+
   const supabase = await createClient();
+
+  const { data: target, error: targetError } = await supabase
+    .from('organization_members')
+    .select('id, role, is_active')
+    .eq('id', input.memberId)
+    .eq('organization_id', ctx.organizationId)
+    .maybeSingle();
+
+  if (targetError) return { error: 'Could not load this member. Please try again.' };
+  if (!target) return { error: 'Member not found.' };
+
+  const callerIsSuper = ctx.role === 'super_admin';
+  if (input.role === 'super_admin' && target.role !== 'super_admin' && !callerIsSuper) {
+    return { error: 'Only a Super Admin can grant the Super Admin role.' };
+  }
+  if (target.role === 'super_admin' && !callerIsSuper) {
+    return { error: 'Only a Super Admin can change another Super Admin.' };
+  }
+
+  const adminRoles = ['super_admin', 'agency_admin'];
+  const removesAdmin =
+    target.is_active &&
+    adminRoles.includes(target.role) &&
+    (!input.isActive || !adminRoles.includes(input.role));
+
+  if (removesAdmin) {
+    const { count, error: countError } = await supabase
+      .from('organization_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', ctx.organizationId)
+      .eq('is_active', true)
+      .in('role', adminRoles)
+      .neq('id', input.memberId);
+
+    if (countError) return { error: 'Could not verify remaining admins. Please try again.' };
+    if (!count) {
+      return { error: 'The organization must keep at least one active admin.' };
+    }
+  }
+
+  // The database trigger (migration 0008) enforces the same rules atomically.
   const { error } = await supabase
     .from('organization_members')
     .update({

@@ -35,6 +35,20 @@ In **Supabase Dashboard → Authentication → URL Configuration**:
 Point your Meta App WhatsApp Webhook Callback URL to:
 `https://your-production-domain.com/api/webhooks/whatsapp`
 
+`WHATSAPP_APP_SECRET` is **required** for the webhook: without it every POST is rejected
+with `503`, and any request without a valid `X-Hub-Signature-256` header gets `401`.
+
+## 4a. Database Migrations
+Apply every file in `supabase/migrations/` in order (`supabase db push`, or paste into the SQL editor).
+`0008_role_scoped_rls_hardening.sql` enforces role permissions in the database:
+- Only Super Admin / Agency Admin can read or write invoices, payments and integrations
+  (client users still see their own invoices). Other staff will see an empty Billing page.
+- Only Sales/BD and above can create or edit leads and prospects; only Marketing Manager and above
+  can create or edit campaigns and metrics.
+- Hard deletes are limited to admins; use `deleted_at` for soft deletes.
+- Only a Super Admin can grant or change the Super Admin role, and an organization can never
+  be left without an active admin.
+
 ## 5. Pre-Deployment Verification
 Run locally inside `minmurasu-crm/`:
 ```powershell
