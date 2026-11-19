@@ -24,7 +24,20 @@ WHATSAPP_PHONE_NUMBER_ID=
 WHATSAPP_WEBHOOK_VERIFY_TOKEN=
 WHATSAPP_APP_SECRET=
 OPENAI_API_KEY=
+OPENAI_MODEL=
+OLLAMA_BASE_URL=
+OLLAMA_MODEL=
+ERROR_WEBHOOK_URL=
 ```
+See `.env.example` for what each variable does.
+
+`NEXT_PUBLIC_SUPABASE_URL` must be set at **build** time as well: the Content-Security-Policy
+header allows browser connections only to that Supabase origin (it falls back to `*.supabase.co`
+if unset). If you add a third-party script, font, analytics tool or API that the browser calls
+directly, add its origin to the CSP in `next.config.ts` or the browser will block it.
+
+Server errors are logged as one JSON line each (search Vercel logs for `"source":"minmurasu-crm"`).
+Set `ERROR_WEBHOOK_URL` to also forward them to a Slack webhook or log drain.
 
 ## 3. Supabase Auth Redirect URLs
 In **Supabase Dashboard → Authentication → URL Configuration**:
@@ -58,6 +71,16 @@ Apply every file in `supabase/migrations/` in order (`supabase db push`, or past
 - `create_client_with_contact()` / `create_lead_with_activity()`: the record, its child row and the
   audit entry are saved together or not at all.
 
+`0010_dashboard_aggregates_and_client_guards.sql` **must also be applied before deploying the matching
+app code**:
+- `dashboard_metrics()`: dashboard, analytics and reports totals are computed in the database.
+  Without it, those pages show zeros. Optional `?from=YYYY-MM-DD&to=YYYY-MM-DD` query parameters
+  limit campaign metrics to a date range.
+- Client users can now change only the approval decision (and feedback) on social posts and
+  approvals; the reviewer and review time are recorded automatically.
+- `get_ollama_config()`: non-admin staff use the organization's Ollama settings again
+  (0008 had hidden them, so they silently fell back to `OLLAMA_BASE_URL`).
+
 ## 5. Pre-Deployment Verification
 Run locally inside `minmurasu-crm/`:
 ```powershell
@@ -71,6 +94,6 @@ Database tests (against a throwaway local Postgres, never production):
 ```powershell
 psql -v ON_ERROR_STOP=1 -f supabase/tests/00_stub_supabase_auth.sql
 Get-ChildItem supabase/migrations/*.sql | Sort-Object Name | ForEach-Object { psql -v ON_ERROR_STOP=1 -q -f $_.FullName }
-psql -v ON_ERROR_STOP=1 -f supabase/tests/10_rls_and_rpcs.test.sql
+Get-ChildItem supabase/tests/*.test.sql | Sort-Object Name | ForEach-Object { psql -v ON_ERROR_STOP=1 -f $_.FullName }
 ```
 The same checks run in GitHub Actions on every pull request (`.github/workflows/ci.yml`).

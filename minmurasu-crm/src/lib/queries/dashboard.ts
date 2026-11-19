@@ -1,6 +1,9 @@
+import { cache } from 'react';
 import { connection } from 'next/server';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
+import { getCurrentUserContext } from '@/lib/auth/session';
 import type { UserRole } from '@/lib/auth/rbac';
+import { isUuid } from '@/lib/validation';
 
 export interface DashboardKPIs {
   activeClients: number;
@@ -42,16 +45,19 @@ export interface ClientProjectRow {
   roiPct: number;
 }
 
-export interface DashboardPayload {
+export interface ShellData {
   configured: boolean;
   userName: string;
   userRole: UserRole;
   clients: { id: string; name: string }[];
+  unreadNotifications: number;
+}
+
+export interface DashboardPayload extends ShellData {
   kpis: DashboardKPIs;
   trends: TrendPoint[];
   channelMix: ChannelMixPoint[];
   campaignRows: ClientProjectRow[];
-  unreadNotifications: number;
 }
 
 const EMPTY_KPIS: DashboardKPIs = {
@@ -67,10 +73,35 @@ const EMPTY_KPIS: DashboardKPIs = {
   overdueTasks: 0,
 };
 
-export async function getDashboardData(filters?: {
-  clientId?: string;
-  search?: string;
-}): Promise<DashboardPayload> {
+interface DashboardMetricsRow {
+  active_clients: number;
+  mrr_inr: number;
+  total_leads: number;
+  qualified_leads: number;
+  won_leads: number;
+  spend_inr: number;
+  revenue_inr: number;
+  trends: { date: string; leads: number; spend: number; revenue: number }[];
+  by_campaign: {
+    campaign_id: string;
+    leads: number;
+    engagements: number;
+    spend: number;
+    revenue: number;
+  }[];
+}
+
+const roi = (revenue: number, spend: number) => (spend > 0 ? ((revenue - spend) / spend) * 100 : 0);
+
+const isIsoDate = (v: unknown): v is string =>
+  typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
+
+/**
+ * Data needed by the dashboard shell (sidebar/topbar) on every page: who the user is,
+ * the client picker and the unread badge. Deliberately excludes metrics so ordinary
+ * page navigations don't pay for the full dashboard aggregation.
+ */
+export const getShellData = cache(async (): Promise<ShellData> => {
   await connection();
 
   if (!isSupabaseConfigured()) {
@@ -79,58 +110,58 @@ export async function getDashboardData(filters?: {
       userName: 'Agency Admin',
       userRole: 'super_admin',
       clients: [],
-      kpis: EMPTY_KPIS,
-      trends: [],
-      channelMix: [],
-      campaignRows: [],
       unreadNotifications: 0,
     };
   }
 
+  const ctx = await getCurrentUserContext();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  let userName = user?.email ?? 'MIN MURASU User';
-  let userRole: UserRole = 'team_member';
+  const [{ data: clients }, unread] = await Promise.all([
+    supabase.from('clients').select('id, name').is('deleted_at', null).order('name').limit(500),
+    ctx
+      ? supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('recipient_id', ctx.userId)
+          .eq('is_read', false)
+      : Promise.resolve({ count: 0 }),
+  ]);
 
-  if (user) {
-    const [{ data: profile }, { data: membership }] = await Promise.all([
-      supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-      supabase
-        .from('organization_members')
-        .select('role')
-        .eq('profile_id', user.id)
-        .eq('is_active', true)
-        .maybeSingle(),
-    ]);
-    if (profile?.full_name) userName = profile.full_name;
-    if (membership?.role) userRole = membership.role as UserRole;
+  return {
+    configured: true,
+    userName: ctx?.fullName ?? 'MIN MURASU User',
+    userRole: ctx?.role ?? 'team_member',
+    clients: clients ?? [],
+    unreadNotifications: unread.count ?? 0,
+  };
+});
+
+export async function getDashboardData(filters?: {
+  clientId?: string;
+  search?: string;
+  /** Inclusive YYYY-MM-DD bounds for campaign metrics. Omit for all time. */
+  from?: string;
+  to?: string;
+}): Promise<DashboardPayload> {
+  const shell = await getShellData();
+
+  if (!shell.configured) {
+    return { ...shell, kpis: EMPTY_KPIS, trends: [], channelMix: [], campaignRows: [] };
   }
 
-  const clientFilter = filters?.clientId && filters.clientId !== 'all' ? filters.clientId : null;
-
-  let clientsQuery = supabase
-    .from('clients')
-    .select('id, name, monthly_retainer_inr, status')
-    .is('deleted_at', null);
-  if (clientFilter) clientsQuery = clientsQuery.eq('id', clientFilter);
+  const supabase = await createClient();
+  // Anything other than a real client id (e.g. "all", empty, garbage) means "all clients".
+  const clientFilter = isUuid(filters?.clientId) ? filters.clientId : null;
+  const from = isIsoDate(filters?.from) ? filters.from : null;
+  const to = isIsoDate(filters?.to) ? filters.to : null;
 
   let campaignsQuery = supabase
     .from('campaigns')
     .select('id, name, status, client_id, clients(name), marketing_channels(name)')
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    .limit(1000);
   if (clientFilter) campaignsQuery = campaignsQuery.eq('client_id', clientFilter);
-
-  let metricsQuery = supabase
-    .from('campaign_metrics')
-    .select('campaign_id, metric_date, spend_inr, leads_count, conversions, engagements, revenue_attributed_inr')
-    .order('metric_date', { ascending: true });
-  if (clientFilter) metricsQuery = metricsQuery.eq('client_id', clientFilter);
-
-  let leadsQuery = supabase.from('leads').select('id, stage').is('deleted_at', null);
-  if (clientFilter) leadsQuery = leadsQuery.eq('client_id', clientFilter);
 
   let approvalsQuery = supabase
     .from('client_approvals')
@@ -148,121 +179,64 @@ export async function getDashboardData(filters?: {
   if (clientFilter) overdueTasksQuery = overdueTasksQuery.eq('client_id', clientFilter);
 
   const [
-    { data: allClients },
-    { data: filteredClients },
+    { data: metricsData, error: metricsError },
     { data: campaigns },
-    { data: metrics },
-    { data: leads },
     { count: pendingApprovals },
     { count: overdueTasks },
-    { count: unreadNotifications },
   ] = await Promise.all([
-    supabase.from('clients').select('id, name').is('deleted_at', null).order('name'),
-    clientsQuery,
+    supabase.rpc('dashboard_metrics', { p_client_id: clientFilter, p_from: from, p_to: to }),
     campaignsQuery,
-    metricsQuery,
-    leadsQuery,
     approvalsQuery,
     overdueTasksQuery,
-    user
-      ? supabase
-          .from('notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('recipient_id', user.id)
-          .eq('is_read', false)
-      : Promise.resolve({ count: 0 }),
   ]);
 
-  const activeClientsList = (filteredClients ?? []).filter((c) => c.status === 'active');
-  const mrrInr = activeClientsList.reduce((sum, c) => sum + Number(c.monthly_retainer_inr || 0), 0);
-
-  const totalLeads = (leads ?? []).length;
-  const qualifiedLeads = (leads ?? []).filter((l) =>
-    ['qualified', 'proposal_sent', 'negotiation', 'won'].includes(l.stage)
-  ).length;
-  const wonLeads = (leads ?? []).filter((l) => l.stage === 'won').length;
-
-  const metricsRows = metrics ?? [];
-  const campaignSpendInr = metricsRows.reduce((s, m) => s + Number(m.spend_inr || 0), 0);
-  const revenueAttributedInr = metricsRows.reduce(
-    (s, m) => s + Number(m.revenue_attributed_inr || 0),
-    0
-  );
-  const avgRoiPct =
-    campaignSpendInr > 0
-      ? ((revenueAttributedInr - campaignSpendInr) / campaignSpendInr) * 100
-      : 0;
-  const conversionRatePct = totalLeads > 0 ? (wonLeads / totalLeads) * 100 : 0;
-
-  // Aggregate trends by date
-  const byDate = new Map<string, { leads: number; spend: number; revenue: number }>();
-  for (const m of metricsRows) {
-    const cur = byDate.get(m.metric_date) ?? { leads: 0, spend: 0, revenue: 0 };
-    cur.leads += Number(m.leads_count || 0);
-    cur.spend += Number(m.spend_inr || 0);
-    cur.revenue += Number(m.revenue_attributed_inr || 0);
-    byDate.set(m.metric_date, cur);
+  if (metricsError) {
+    console.error('[dashboard] dashboard_metrics failed', metricsError.code, metricsError.message);
   }
+  const agg = (metricsData as DashboardMetricsRow | null) ?? null;
 
-  const trends: TrendPoint[] = Array.from(byDate.entries()).map(([date, val]) => ({
-    date,
-    leads: val.leads,
-    spend: val.spend,
-    revenue: val.revenue,
-    roiPct: val.spend > 0 ? Math.round(((val.revenue - val.spend) / val.spend) * 100) : 0,
-  }));
+  const spend = Number(agg?.spend_inr ?? 0);
+  const revenue = Number(agg?.revenue_inr ?? 0);
+  const totalLeads = Number(agg?.total_leads ?? 0);
+  const wonLeads = Number(agg?.won_leads ?? 0);
 
-  // Aggregate per-campaign & per-channel
-  const metricsByCampaign = new Map<
-    string,
-    { leads: number; engagements: number; spend: number; revenue: number }
-  >();
-  for (const m of metricsRows) {
-    const cur = metricsByCampaign.get(m.campaign_id) ?? {
-      leads: 0,
-      engagements: 0,
-      spend: 0,
-      revenue: 0,
-    };
-    cur.leads += Number(m.leads_count || 0);
-    cur.engagements += Number(m.engagements || 0);
-    cur.spend += Number(m.spend_inr || 0);
-    cur.revenue += Number(m.revenue_attributed_inr || 0);
-    metricsByCampaign.set(m.campaign_id, cur);
-  }
+  const trends: TrendPoint[] = (agg?.trends ?? []).map((t) => {
+    const s = Number(t.spend);
+    const r = Number(t.revenue);
+    return { date: t.date, leads: Number(t.leads), spend: s, revenue: r, roiPct: Math.round(roi(r, s)) };
+  });
 
+  const byCampaign = new Map((agg?.by_campaign ?? []).map((b) => [b.campaign_id, b]));
   const byChannel = new Map<string, { engagements: number; leads: number }>();
   const searchLower = filters?.search?.toLowerCase() ?? '';
 
   const campaignRows: ClientProjectRow[] = (campaigns ?? [])
     .map((c) => {
-      const agg = metricsByCampaign.get(c.id) ?? {
-        leads: 0,
-        engagements: 0,
-        spend: 0,
-        revenue: 0,
-      };
+      const m = byCampaign.get(c.id);
+      const leads = Number(m?.leads ?? 0);
+      const engagements = Number(m?.engagements ?? 0);
+      const cSpend = Number(m?.spend ?? 0);
+      const cRevenue = Number(m?.revenue ?? 0);
       const clientRel = c.clients as unknown as { name: string } | null;
       const channelRel = c.marketing_channels as unknown as { name: string } | null;
-      const clientName = clientRel?.name ?? 'Unassigned';
       const channelName = channelRel?.name ?? 'General';
 
-      const chCur = byChannel.get(channelName) ?? { engagements: 0, leads: 0 };
-      chCur.engagements += agg.engagements;
-      chCur.leads += agg.leads;
-      byChannel.set(channelName, chCur);
+      const ch = byChannel.get(channelName) ?? { engagements: 0, leads: 0 };
+      ch.engagements += engagements;
+      ch.leads += leads;
+      byChannel.set(channelName, ch);
 
       return {
         id: c.id,
-        clientName,
+        clientName: clientRel?.name ?? 'Unassigned',
         campaignName: c.name,
         channelName,
         status: c.status,
-        leads: agg.leads,
-        engagements: agg.engagements,
-        spendInr: agg.spend,
-        revenueInr: agg.revenue,
-        roiPct: agg.spend > 0 ? Math.round(((agg.revenue - agg.spend) / agg.spend) * 100) : 0,
+        leads,
+        engagements,
+        spendInr: cSpend,
+        revenueInr: cRevenue,
+        roiPct: Math.round(roi(cRevenue, cSpend)),
       };
     })
     .filter(
@@ -273,32 +247,28 @@ export async function getDashboardData(filters?: {
         row.channelName.toLowerCase().includes(searchLower)
     );
 
-  const channelMix: ChannelMixPoint[] = Array.from(byChannel.entries()).map(([name, val]) => ({
+  const channelMix: ChannelMixPoint[] = Array.from(byChannel.entries()).map(([name, v]) => ({
     name,
-    engagements: val.engagements,
-    leads: val.leads,
+    engagements: v.engagements,
+    leads: v.leads,
   }));
 
   return {
-    configured: true,
-    userName,
-    userRole,
-    clients: allClients ?? [],
+    ...shell,
     kpis: {
-      activeClients: activeClientsList.length,
-      mrrInr,
+      activeClients: Number(agg?.active_clients ?? 0),
+      mrrInr: Number(agg?.mrr_inr ?? 0),
       totalLeads,
-      qualifiedLeads,
-      campaignSpendInr,
-      revenueAttributedInr,
-      avgRoiPct,
-      conversionRatePct,
+      qualifiedLeads: Number(agg?.qualified_leads ?? 0),
+      campaignSpendInr: spend,
+      revenueAttributedInr: revenue,
+      avgRoiPct: roi(revenue, spend),
+      conversionRatePct: totalLeads > 0 ? (wonLeads / totalLeads) * 100 : 0,
       pendingApprovals: pendingApprovals ?? 0,
       overdueTasks: overdueTasks ?? 0,
     },
     trends,
     channelMix,
     campaignRows,
-    unreadNotifications: unreadNotifications ?? 0,
   };
 }

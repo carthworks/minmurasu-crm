@@ -7,10 +7,10 @@ import { AiAssistantPanel } from '@/components/ai/ai-assistant-panel';
 async function AnalyticsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string }>;
+  searchParams: Promise<{ clientId?: string; from?: string; to?: string }>;
 }) {
   const params = await searchParams;
-  const data = await getDashboardData({ clientId: params.clientId });
+  const data = await getDashboardData({ clientId: params.clientId, from: params.from, to: params.to });
 
   return (
     <div className="space-y-6">
@@ -40,7 +40,7 @@ async function AnalyticsContent({
 export default function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string }>;
+  searchParams: Promise<{ clientId?: string; from?: string; to?: string }>;
 }) {
   return (
     <Suspense fallback={<div className="p-6 text-sm text-brand-slate">Loading analytics...</div>}>
