@@ -10,6 +10,15 @@ export interface AiProviderStatus {
   activeLabel: string;
 }
 
+export function pickBestChatModel(models: string[], preferred?: string): string {
+  if (preferred && models.includes(preferred)) return preferred;
+  const chatModels = models.filter(
+    (m) => !/embed|ocr/i.test(m)
+  );
+  const fastModel = chatModels.find((m) => /4b|3b|7b|8b|llama3/i.test(m));
+  return fastModel || chatModels[0] || models[0] || '';
+}
+
 export async function getAiProviderStatus(
   organizationId?: string
 ): Promise<AiProviderStatus> {
@@ -44,7 +53,7 @@ export async function getAiProviderStatus(
 
   try {
     const res = await fetch(`${ollamaBaseUrl}/api/tags`, {
-      signal: AbortSignal.timeout(1_500),
+      signal: AbortSignal.timeout(2_500),
     });
     if (res.ok) {
       const json = (await res.json()) as { models?: { name: string }[] };
@@ -56,9 +65,7 @@ export async function getAiProviderStatus(
   }
 
   const effectiveOllamaModel =
-    ollamaSelectedModel && ollamaAvailableModels.includes(ollamaSelectedModel)
-      ? ollamaSelectedModel
-      : ollamaAvailableModels[0] || ollamaSelectedModel || 'No local model';
+    pickBestChatModel(ollamaAvailableModels, ollamaSelectedModel) || 'No local model';
 
   let activeLabel = 'Not Connected';
   if (openAiConfigured) {

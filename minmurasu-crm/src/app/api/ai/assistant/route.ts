@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getCurrentUserContext } from '@/lib/auth/session';
 import { getDashboardData } from '@/lib/queries/dashboard';
 import { checkRateLimit } from '@/lib/security/rate-limit';
-import { getAiProviderStatus } from '@/lib/ai/status';
+import { getAiProviderStatus, pickBestChatModel } from '@/lib/ai/status';
 
 const requestSchema = z.object({
   prompt: z.string().trim().min(2).max(1000),
@@ -51,24 +51,21 @@ async function tryOllama(
   preferred: string,
   systemPrompt: string,
   userPrompt: string
-): Promise<{ advisory: string; model: string } | null> {
+): Promise<{ advisory: string; model: string } | { error: string } | null> {
   try {
     // Check if Ollama is running and discover installed models
     const tagsRes = await fetch(`${baseUrl}/api/tags`, {
-      signal: AbortSignal.timeout(2_500),
+      signal: AbortSignal.timeout(3_000),
     });
     if (!tagsRes.ok) return null;
 
     const tagsJson = (await tagsRes.json()) as {
       models?: { name: string }[];
     };
-    const availableModels = tagsJson.models ?? [];
-    if (availableModels.length === 0) return null;
+    const modelNames = (tagsJson.models ?? []).map((m) => m.name);
+    if (modelNames.length === 0) return null;
 
-    const model =
-      preferred && availableModels.some((m) => m.name === preferred)
-        ? preferred
-        : availableModels[0].name;
+    const model = pickBestChatModel(modelNames, preferred);
 
     const chatRes = await fetch(`${baseUrl}/api/chat`, {
       method: 'POST',
@@ -82,18 +79,21 @@ async function tryOllama(
           { role: 'user', content: userPrompt },
         ],
       }),
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(120_000),
     });
 
-    if (!chatRes.ok) return null;
+    if (!chatRes.ok) {
+      return { error: `Ollama returned HTTP ${chatRes.status} for model "${model}".` };
+    }
 
     const chatJson = (await chatRes.json()) as {
       message?: { content?: string };
     };
     const content = chatJson.message?.content;
-    return content ? { advisory: content, model } : null;
-  } catch {
-    return null;
+    return content ? { advisory: content, model } : { error: `Ollama model "${model}" returned an empty response.` };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown Ollama error';
+    return { error: `Ollama connection/generation failed: ${msg}` };
   }
 }
 
@@ -157,7 +157,7 @@ Measured Context:
     systemPrompt,
     parsed.data.prompt
   );
-  if (ollamaResult) {
+  if (ollamaResult && 'advisory' in ollamaResult) {
     return NextResponse.json({
       advisory: ollamaResult.advisory,
       provider: 'ollama',
@@ -168,7 +168,9 @@ Measured Context:
   return NextResponse.json(
     {
       error:
-        'Neither OPENAI_API_KEY nor a running local Ollama instance (http://127.0.0.1:11434 with an installed model) is available.',
+        ollamaResult && 'error' in ollamaResult
+          ? ollamaResult.error
+          : `Neither OPENAI_API_KEY nor a running local Ollama instance (${aiStatus.ollamaBaseUrl} with an installed model) is available.`,
     },
     { status: 503 }
   );
