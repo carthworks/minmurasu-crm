@@ -1,22 +1,32 @@
-const buckets = new Map<string, { count: number; resetAt: number }>();
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-export function checkRateLimit(
-  key: string,
-  limit = 20,
-  windowMs = 60_000
-): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const entry = buckets.get(key);
+export type RateLimitResult =
+  | { allowed: true }
+  | { allowed: false; reason: 'limited' | 'unavailable' };
 
-  if (!entry || entry.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: limit - 1 };
+/**
+ * Per-user rate limit backed by Postgres (`check_rate_limit`, migration 0009), so the
+ * count is shared across every serverless instance. Must be called with the user's
+ * authenticated Supabase client; the bucket is keyed by auth.uid() in the database.
+ *
+ * Fails closed: if the limiter itself errors, the request is refused rather than
+ * letting traffic through to paid upstream APIs unmetered.
+ */
+export async function checkRateLimit(
+  supabase: SupabaseClient,
+  bucket: string,
+  limit: number,
+  windowSeconds: number
+): Promise<RateLimitResult> {
+  const { data, error } = await supabase.rpc('check_rate_limit', {
+    p_bucket: bucket,
+    p_limit: limit,
+    p_window_seconds: windowSeconds,
+  });
+
+  if (error) {
+    console.error('[rate-limit]', error.code, error.message);
+    return { allowed: false, reason: 'unavailable' };
   }
-
-  if (entry.count >= limit) {
-    return { allowed: false, remaining: 0 };
-  }
-
-  entry.count += 1;
-  return { allowed: true, remaining: limit - entry.count };
+  return data === true ? { allowed: true } : { allowed: false, reason: 'limited' };
 }

@@ -49,10 +49,28 @@ Apply every file in `supabase/migrations/` in order (`supabase db push`, or past
 - Only a Super Admin can grant or change the Super Admin role, and an organization can never
   be left without an active admin.
 
+`0009_rate_limits_and_transactional_rpcs.sql` **must be applied before deploying the matching app code**
+(the app calls these functions):
+- `check_rate_limit()`: Postgres-backed per-user rate limit used by the AI assistant
+  (10/minute, 200/day). If the function is missing, the assistant returns `503` (fails closed).
+- `record_payment()`: partial payments keep the invoice open; it is marked `paid` only when fully
+  settled. Overpayments and a repeated reference number on the same invoice are rejected.
+- `create_client_with_contact()` / `create_lead_with_activity()`: the record, its child row and the
+  audit entry are saved together or not at all.
+
 ## 5. Pre-Deployment Verification
 Run locally inside `minmurasu-crm/`:
 ```powershell
-npx tsc --noEmit
+npm run typecheck
 npm run lint
+npm test
 npm run build
 ```
+
+Database tests (against a throwaway local Postgres, never production):
+```powershell
+psql -v ON_ERROR_STOP=1 -f supabase/tests/00_stub_supabase_auth.sql
+Get-ChildItem supabase/migrations/*.sql | Sort-Object Name | ForEach-Object { psql -v ON_ERROR_STOP=1 -q -f $_.FullName }
+psql -v ON_ERROR_STOP=1 -f supabase/tests/10_rls_and_rpcs.test.sql
+```
+The same checks run in GitHub Actions on every pull request (`.github/workflows/ci.yml`).

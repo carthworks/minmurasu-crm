@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUserContext } from '@/lib/auth/session';
 import { canManageCampaigns, isAgencyStaffRole } from '@/lib/auth/rbac';
+import { toUserError } from '@/lib/errors';
+import { isUuid } from '@/lib/validation';
 
 const uuidField = (msg = 'Invalid ID') =>
   z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, msg);
@@ -95,7 +97,7 @@ export async function createCampaignAction(formData: FormData) {
     owner_id: ctx.userId,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
 
   revalidatePath('/campaigns');
   revalidatePath('/');
@@ -135,7 +137,7 @@ export async function recordCampaignMetricAction(formData: FormData) {
     { onConflict: 'campaign_id,metric_date' }
   );
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
 
   revalidatePath('/campaigns');
   revalidatePath('/');
@@ -169,7 +171,7 @@ export async function createProjectAction(formData: FormData) {
     owner_id: ctx.userId,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
 
   revalidatePath('/projects');
   return { success: true };
@@ -206,7 +208,7 @@ export async function createTaskAction(formData: FormData) {
     assignee_id: ctx.userId,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
 
   revalidatePath('/tasks');
   revalidatePath('/');
@@ -219,14 +221,19 @@ export async function updateTaskStatusAction(taskId: string, status: string) {
     return { error: 'Unauthorized' };
   }
 
+  if (!isUuid(taskId)) return { error: 'Invalid task.' };
+  if (!taskSchema.shape.status.safeParse(status).success) return { error: 'Invalid status.' };
+
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('tasks')
     .update({ status })
     .eq('id', taskId)
-    .eq('organization_id', ctx.organizationId);
+    .eq('organization_id', ctx.organizationId)
+    .select('id');
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
+  if (!updated?.length) return { error: 'Task not found or you no longer have access to it.' };
 
   revalidatePath('/tasks');
   revalidatePath('/');
@@ -261,7 +268,7 @@ export async function createSocialPostAction(formData: FormData) {
     publish_status: parsed.data.publish_status,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
 
   revalidatePath('/calendar');
   revalidatePath('/social');
@@ -275,14 +282,26 @@ export async function updateSocialPostApprovalAction(
   const ctx = await getCurrentUserContext();
   if (!ctx) return { error: 'Unauthorized' };
 
+  if (!isUuid(postId)) return { error: 'Invalid post.' };
+  if (approvalStatus !== 'approved' && approvalStatus !== 'changes_requested') {
+    return { error: 'Invalid approval status.' };
+  }
+
   const supabase = await createClient();
-  const { error } = await supabase
+  let query = supabase
     .from('social_posts')
     .update({ approval_status: approvalStatus })
     .eq('id', postId)
     .eq('organization_id', ctx.organizationId);
+  // Client users may only act on their own client's posts.
+  if (ctx.role === 'client') {
+    if (!ctx.clientId) return { error: 'Unauthorized' };
+    query = query.eq('client_id', ctx.clientId);
+  }
+  const { data: updated, error } = await query.select('id');
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
+  if (!updated?.length) return { error: 'Post not found or you no longer have access to it.' };
 
   revalidatePath('/calendar');
   revalidatePath('/social');
@@ -309,7 +328,7 @@ export async function updateOrganizationAction(formData: FormData) {
     .update({ name, domain: domain || null })
     .eq('id', ctx.organizationId);
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
 
   revalidatePath('/settings');
   return { success: true };
@@ -397,7 +416,7 @@ export async function updateMemberRoleAction(input: {
     .eq('id', input.memberId)
     .eq('organization_id', ctx.organizationId);
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
 
   await supabase.from('audit_logs').insert({
     organization_id: ctx.organizationId,
@@ -450,7 +469,7 @@ export async function createInvoiceAction(formData: FormData) {
     .select('id')
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
 
   await supabase.from('audit_logs').insert({
     organization_id: ctx.organizationId,
@@ -480,40 +499,38 @@ export async function recordPaymentAction(formData: FormData) {
   const paymentMethod = String(formData.get('payment_method') ?? 'Bank Transfer / NEFT').trim();
   const referenceNumber = String(formData.get('reference_number') ?? '').trim();
 
-  if (!invoiceId || amountInr <= 0) {
+  if (!isUuid(invoiceId) || !Number.isFinite(amountInr) || amountInr <= 0) {
     return { error: 'Valid invoice and positive payment amount are required.' };
   }
+  if (paymentMethod.length > 100 || referenceNumber.length > 100) {
+    return { error: 'Payment method and reference must be under 100 characters.' };
+  }
 
+  // One transaction: locks the invoice, rejects overpayment and duplicate references,
+  // records the payment, marks the invoice paid only when fully settled, and audits it.
   const supabase = await createClient();
-  const { error: payError } = await supabase.from('payments').insert({
-    organization_id: ctx.organizationId,
-    invoice_id: invoiceId,
-    amount_inr: amountInr,
-    payment_method: paymentMethod,
-    reference_number: referenceNumber || null,
+  const { data, error } = await supabase.rpc('record_payment', {
+    p_invoice_id: invoiceId,
+    p_amount_inr: Math.round(amountInr * 100) / 100,
+    p_payment_method: paymentMethod,
+    p_reference_number: referenceNumber,
   });
 
-  if (payError) return { error: payError.message };
+  if (error) {
+    if (error.code === '23505') {
+      return { error: 'A payment with this reference number is already recorded for this invoice.' };
+    }
+    return { error: toUserError(error, 'recordPayment') };
+  }
 
-  const { error: invError } = await supabase
-    .from('invoices')
-    .update({ status: 'paid' })
-    .eq('id', invoiceId)
-    .eq('organization_id', ctx.organizationId);
-
-  if (invError) return { error: invError.message };
-
-  await supabase.from('audit_logs').insert({
-    organization_id: ctx.organizationId,
-    actor_id: ctx.userId,
-    action: 'payment.recorded',
-    entity_type: 'invoice',
-    entity_id: invoiceId,
-    details: { amount_inr: amountInr, payment_method: paymentMethod },
-  });
+  const result = data as { status: string; balance_inr: number } | null;
 
   revalidatePath('/billing');
-  return { success: true };
+  return {
+    success: true,
+    status: result?.status ?? null,
+    balanceInr: result ? Number(result.balance_inr) : null,
+  };
 }
 
 export async function updateOllamaSettingsAction(formData: FormData) {
@@ -547,7 +564,7 @@ export async function updateOllamaSettingsAction(formData: FormData) {
     { onConflict: 'organization_id,provider' }
   );
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
 
   revalidatePath('/settings');
   revalidatePath('/settings/integrations');
@@ -597,7 +614,7 @@ export async function createDeliverableAction(formData: FormData) {
     .select('id')
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'operations') };
 
   if (parsed.data.status === 'pending_review') {
     await supabase.from('client_approvals').insert({
@@ -621,14 +638,28 @@ export async function updateDeliverableStatusAction(
   const ctx = await getCurrentUserContext();
   if (!ctx) return { error: 'Unauthorized' };
 
+  if (!isUuid(deliverableId)) return { error: 'Invalid deliverable.' };
+  if (!deliverableSchema.shape.status.safeParse(status).success) {
+    return { error: 'Invalid status.' };
+  }
+
   const supabase = await createClient();
-  const { error } = await supabase
+  let query = supabase
     .from('deliverables')
     .update({ status })
     .eq('id', deliverableId)
     .eq('organization_id', ctx.organizationId);
+  // Client users may only act on their own client's deliverables.
+  if (ctx.role === 'client') {
+    if (!ctx.clientId) return { error: 'Unauthorized' };
+    query = query.eq('client_id', ctx.clientId);
+  }
+  const { data: updated, error } = await query.select('id');
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'updateDeliverableStatus') };
+  if (!updated?.length) {
+    return { error: 'Deliverable not found or you no longer have access to it.' };
+  }
 
   revalidatePath('/deliverables');
   revalidatePath('/approvals');

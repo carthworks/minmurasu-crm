@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUserContext } from '@/lib/auth/session';
 import { canManageLeads, isAgencyStaffRole } from '@/lib/auth/rbac';
+import { toUserError } from '@/lib/errors';
+import { isUuid, normalizePhone } from '@/lib/validation';
 
 const clientSchema = z.object({
   name: z.string().trim().min(2, 'Client name is required'),
@@ -99,45 +101,29 @@ export async function createClientAction(formData: FormData) {
   } = parsed.data;
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('clients')
-    .insert({
-      organization_id: ctx.organizationId,
+  // Client, primary contact and audit entry are written in one transaction (migration 0009).
+  const { data: clientId, error } = await supabase.rpc('create_client_with_contact', {
+    p_organization_id: ctx.organizationId,
+    p_client: {
       ...clientFields,
       contract_start: clientFields.contract_start || null,
       contract_end: clientFields.contract_end || null,
-      account_manager_id: ctx.userId,
-    })
-    .select('id')
-    .single();
-
-  if (error) return { error: error.message };
-
-  if (primary_contact_name) {
-    await supabase.from('client_contacts').insert({
-      organization_id: ctx.organizationId,
-      client_id: data.id,
-      full_name: primary_contact_name,
-      email: primary_contact_email || null,
-      phone: primary_contact_phone || null,
-      whatsapp_number: primary_contact_phone || null,
-      is_primary: true,
-    });
-  }
-
-  await supabase.from('audit_logs').insert({
-    organization_id: ctx.organizationId,
-    actor_id: ctx.userId,
-    action: 'client.created',
-    entity_type: 'client',
-    entity_id: data.id,
-    details: { name: parsed.data.name },
+    },
+    p_contact: primary_contact_name
+      ? {
+          full_name: primary_contact_name,
+          email: primary_contact_email || null,
+          phone: normalizePhone(primary_contact_phone) ?? primary_contact_phone ?? null,
+        }
+      : null,
   });
+
+  if (error) return { error: toUserError(error, 'createClient') };
 
   revalidatePath('/clients');
   revalidatePath('/contacts');
   revalidatePath('/');
-  return { success: true, id: data.id };
+  return { success: true, id: clientId as string };
 }
 
 export async function createLeadAction(formData: FormData) {
@@ -169,67 +155,63 @@ export async function createLeadAction(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const email = parsed.data.email ? parsed.data.email.toLowerCase() : null;
+  const phone = normalizePhone(parsed.data.phone) ?? parsed.data.phone ?? null;
 
-  // Duplicate check by email or phone
-  if (parsed.data.email || parsed.data.phone) {
-    const orParts = [
-      parsed.data.email ? `email.eq.${parsed.data.email}` : null,
-      parsed.data.phone ? `phone.eq.${parsed.data.phone}` : null,
-    ].filter(Boolean);
-    if (orParts.length > 0) {
-      const { data: existing } = await supabase
+  // Duplicate check by email or phone. Separate .eq() filters (not a hand-built .or()
+  // string) so user input can never change the filter expression.
+  if ((email || phone) && formData.get('allow_duplicate') !== 'true') {
+    const findBy = async (column: 'email' | 'phone', value: string) => {
+      const { data, error } = await supabase
         .from('leads')
         .select('id, name')
         .eq('organization_id', ctx.organizationId)
         .is('deleted_at', null)
-        .or(orParts.join(','))
+        .eq(column, value)
         .limit(1);
+      if (error) throw error;
+      return data?.[0] ?? null;
+    };
 
-      if (existing && existing.length > 0 && formData.get('allow_duplicate') !== 'true') {
+    try {
+      const existing = (email && (await findBy('email', email))) || (phone && (await findBy('phone', phone)));
+      if (existing) {
         return {
-          error: `Possible duplicate lead found (${existing[0].name}). Confirm to create anyway.`,
+          error: `Possible duplicate lead found (${existing.name}). Confirm to create anyway.`,
           duplicate: true,
         };
       }
+    } catch (dupError) {
+      return { error: toUserError(dupError as { code?: string; message?: string }, 'leadDuplicateCheck') };
     }
   }
 
-  const { data, error } = await supabase
-    .from('leads')
-    .insert({
-      organization_id: ctx.organizationId,
+  // Lead and its "created" activity are written in one transaction (migration 0009).
+  const { data: leadId, error } = await supabase.rpc('create_lead_with_activity', {
+    p_organization_id: ctx.organizationId,
+    p_lead: {
       client_id: parsed.data.client_id || null,
       name: parsed.data.name,
-      company: parsed.data.company,
-      phone: parsed.data.phone,
-      email: parsed.data.email || null,
-      interested_service: parsed.data.interested_service,
+      company: parsed.data.company ?? null,
+      phone,
+      email,
+      interested_service: parsed.data.interested_service ?? null,
       source: parsed.data.source,
-      assigned_to: ctx.userId,
       lead_score: parsed.data.lead_score,
       budget_inr: parsed.data.budget_inr ?? null,
       expected_deal_value_inr: parsed.data.expected_deal_value_inr ?? null,
       stage: parsed.data.stage,
       next_follow_up: parsed.data.next_follow_up || null,
-      notes: parsed.data.notes,
-    })
-    .select('id')
-    .single();
-
-  if (error) return { error: error.message };
-
-  await supabase.from('lead_activities').insert({
-    organization_id: ctx.organizationId,
-    lead_id: data.id,
-    actor_id: ctx.userId,
-    activity_type: 'created',
-    summary: `Lead created from ${parsed.data.source}`,
+      notes: parsed.data.notes ?? null,
+    },
   });
+
+  if (error) return { error: toUserError(error, 'createLead') };
 
   revalidatePath('/leads');
   revalidatePath('/pipeline');
   revalidatePath('/');
-  return { success: true, id: data.id };
+  return { success: true, id: leadId as string };
 }
 
 export async function updateLeadStageAction(leadId: string, stage: string) {
@@ -243,14 +225,18 @@ export async function updateLeadStageAction(leadId: string, stage: string) {
     return { error: 'Invalid stage' };
   }
 
+  if (!isUuid(leadId)) return { error: 'Invalid lead.' };
+
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('leads')
     .update({ stage })
     .eq('id', leadId)
-    .eq('organization_id', ctx.organizationId);
+    .eq('organization_id', ctx.organizationId)
+    .select('id');
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'crm') };
+  if (!updated?.length) return { error: 'Lead not found or you no longer have access to it.' };
 
   await supabase.from('lead_activities').insert({
     organization_id: ctx.organizationId,
@@ -298,7 +284,7 @@ export async function createProspectAction(formData: FormData) {
     assigned_to: ctx.userId,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'crm') };
 
   revalidatePath('/prospects');
   return { success: true };
@@ -331,7 +317,7 @@ export async function createContactAction(formData: FormData) {
     email: parsed.data.email || null,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toUserError(error, 'crm') };
 
   revalidatePath('/contacts');
   revalidatePath(`/clients/${parsed.data.client_id}`);
