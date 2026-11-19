@@ -515,3 +515,41 @@ export async function recordPaymentAction(formData: FormData) {
   revalidatePath('/billing');
   return { success: true };
 }
+
+export async function updateOllamaSettingsAction(formData: FormData) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx || (ctx.role !== 'super_admin' && ctx.role !== 'agency_admin')) {
+    return { error: 'Unauthorized: admin access required.' };
+  }
+
+  const baseUrl = String(formData.get('ollama_base_url') ?? 'http://127.0.0.1:11434')
+    .trim()
+    .replace(/\/$/, '');
+  const model = String(formData.get('ollama_model') ?? '').trim();
+
+  try {
+    const parsed = new URL(baseUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return { error: 'Ollama Base URL must use http:// or https://' };
+    }
+  } catch {
+    return { error: 'Enter a valid Ollama Base URL (e.g. http://127.0.0.1:11434).' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('integrations').upsert(
+    {
+      organization_id: ctx.organizationId,
+      provider: 'ollama',
+      status: 'configured',
+      config: { base_url: baseUrl, model },
+    },
+    { onConflict: 'organization_id,provider' }
+  );
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/settings');
+  revalidatePath('/settings/integrations');
+  return { success: true };
+}
