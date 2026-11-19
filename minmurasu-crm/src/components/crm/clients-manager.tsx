@@ -2,8 +2,22 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Briefcase, ExternalLink, MapPin, Plus, Search, X } from 'lucide-react';
+import {
+  Briefcase,
+  Download,
+  ExternalLink,
+  Flag,
+  IndianRupee,
+  LayoutGrid,
+  List,
+  MapPin,
+  Plus,
+  Search,
+  Tag,
+  X,
+} from 'lucide-react';
 import { createClientAction } from '@/lib/actions/crm';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { formatINR } from '@/lib/utils';
 
 export interface ClientItem {
@@ -17,23 +31,68 @@ export interface ClientItem {
   status: string;
 }
 
+const STATUS_DOT: Record<string, string> = {
+  active: 'bg-emerald-500',
+  onboarding: 'bg-brand-blue',
+  paused: 'bg-amber-500',
+  churned: 'bg-rose-500',
+};
+
 export function ClientsManager({ clients }: { clients: ClientItem[] }) {
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'name_asc' | 'retainer_desc' | 'retainer_asc'>('name_asc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const filtered = clients.filter((c) => {
-    const q = search.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      (c.industry ?? '').toLowerCase().includes(q) ||
-      (c.location ?? '').toLowerCase().includes(q);
-    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filtered = clients
+    .filter((c) => {
+      const q = search.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        c.name.toLowerCase().includes(q) ||
+        (c.industry ?? '').toLowerCase().includes(q) ||
+        (c.location ?? '').toLowerCase().includes(q) ||
+        (c.service_package ?? '').toLowerCase().includes(q);
+      const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'retainer_desc') return Number(b.monthly_retainer_inr) - Number(a.monthly_retainer_inr);
+      if (sortBy === 'retainer_asc') return Number(a.monthly_retainer_inr) - Number(b.monthly_retainer_inr);
+      return a.name.localeCompare(b.name);
+    });
+
+  const safePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / pageSize)));
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  function handleExportCsv() {
+    const headers = ['Client Name', 'Industry', 'Location', 'Package', 'Status', 'Monthly Retainer (INR)', 'Website'];
+    const rows = filtered.map((c) =>
+      [
+        c.name,
+        c.industry ?? '',
+        c.location ?? '',
+        c.service_package ?? '',
+        c.status,
+        c.monthly_retainer_inr,
+        c.website ?? '',
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(',')
+    );
+    const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'minmurasu-clients.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -50,7 +109,7 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-extrabold text-brand-navy dark:text-white">
@@ -61,101 +120,256 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="btn-brand-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs self-start cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add Client</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              aria-label="Table view"
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-slate-100 dark:bg-white/15 text-brand-navy dark:text-white font-semibold'
+                  : 'text-slate-400 hover:text-brand-navy dark:hover:text-white'
+              }`}
+            >
+              <List className="h-3.5 w-3.5" />
+              Table
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              aria-label="Grid view"
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition cursor-pointer ${
+                viewMode === 'grid'
+                  ? 'bg-slate-100 dark:bg-white/15 text-brand-navy dark:text-white font-semibold'
+                  : 'text-slate-400 hover:text-brand-navy dark:hover:text-white'
+              }`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Cards
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="btn-brand-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Client</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[220px] max-w-sm">
-          <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+      {/* Compact Filter Pill Bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter by client, industry, or city..."
-            className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy pl-10 pr-4 py-2 text-sm text-brand-navy dark:text-white focus:border-brand-blue focus:outline-none"
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search client, industry, city..."
+            className="w-full h-8 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy pl-8 pr-3 text-xs text-brand-navy dark:text-white focus:border-brand-blue focus:outline-none"
           />
         </div>
 
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-3 py-2 text-xs font-medium text-brand-navy dark:text-white"
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
+          className="h-8 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-2.5 text-xs font-medium"
         >
-          <option value="all">All Statuses</option>
+          <option value="all">Status: Any</option>
           <option value="active">Active</option>
           <option value="onboarding">Onboarding</option>
           <option value="paused">Paused</option>
           <option value="churned">Churned</option>
         </select>
+
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          className="h-8 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-2.5 text-xs font-medium"
+        >
+          <option value="name_asc">Sort: Name A–Z</option>
+          <option value="retainer_desc">Sort: Retainer High–Low</option>
+          <option value="retainer_asc">Sort: Retainer Low–High</option>
+        </select>
+
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          className="h-8 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-2.5 text-xs font-medium hover:border-brand-blue transition cursor-pointer"
+        >
+          <Download className="h-3.5 w-3.5 text-slate-400" />
+          Export CSV
+        </button>
       </div>
 
-      {/* Client Cards Grid */}
-      {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 dark:border-white/15 p-10 text-center text-sm text-brand-slate dark:text-slate-400">
-          No clients match your current filters.
+      {/* Table or Cards View */}
+      {viewMode === 'table' ? (
+        <div className="bg-white dark:bg-brand-navy rounded-xl border border-slate-200/80 dark:border-white/10 overflow-hidden">
+          {paginated.length === 0 ? (
+            <div className="p-10 text-center text-sm text-brand-slate dark:text-slate-400">
+              No clients match your current filters.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200/80 dark:border-white/10 bg-slate-50/70 dark:bg-brand-navy-surface text-[11px] font-medium text-slate-500 dark:text-slate-300">
+                    <th className="py-2.5 px-4">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Briefcase className="h-3.5 w-3.5 text-slate-400" />
+                        Client &amp; Package
+                      </span>
+                    </th>
+                    <th className="py-2.5 px-4">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5 text-slate-400" />
+                        Industry
+                      </span>
+                    </th>
+                    <th className="py-2.5 px-4">
+                      <span className="inline-flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                        Location
+                      </span>
+                    </th>
+                    <th className="py-2.5 px-4">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Flag className="h-3.5 w-3.5 text-slate-400" />
+                        Status
+                      </span>
+                    </th>
+                    <th className="py-2.5 px-4 text-right">
+                      <span className="inline-flex items-center gap-1.5 justify-end">
+                        <IndianRupee className="h-3.5 w-3.5 text-slate-400" />
+                        Retainer
+                      </span>
+                    </th>
+                    <th className="py-2.5 px-4 text-right">Portal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/10 text-[13px]">
+                  {paginated.map((client) => (
+                    <tr key={client.id} className="hover:bg-slate-50/80 dark:hover:bg-white/5 transition">
+                      <td className="py-2.5 px-4">
+                        <Link href={`/clients/${client.id}`} className="flex items-center gap-2.5 group">
+                          <span className="h-6 w-6 rounded-md bg-brand-navy/8 dark:bg-white/10 text-[10px] font-bold flex items-center justify-center shrink-0">
+                            {client.name.slice(0, 2).toUpperCase()}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-brand-navy dark:text-white group-hover:text-brand-blue truncate">
+                              {client.name}
+                            </p>
+                            <p className="text-[11px] text-slate-400 truncate">
+                              {client.service_package || 'Custom Package'}
+                            </p>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="py-2.5 px-4 text-xs text-brand-slate dark:text-slate-300">
+                        {client.industry || '—'}
+                      </td>
+                      <td className="py-2.5 px-4 text-xs text-brand-slate dark:text-slate-300">
+                        {client.location || '—'}
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 dark:border-white/15 bg-slate-50/80 dark:bg-white/5 px-2.5 py-0.5 text-xs font-medium capitalize">
+                          <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[client.status] ?? 'bg-emerald-500'}`} />
+                          {client.status}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-semibold tabular-nums">
+                        {formatINR(Number(client.monthly_retainer_inr || 0))}
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <Link
+                          href={`/clients/${client.id}`}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-brand-blue hover:underline"
+                        >
+                          360°
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <TablePagination
+            totalItems={filtered.length}
+            page={safePage}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {filtered.map((client) => (
-            <Link
-              key={client.id}
-              href={`/clients/${client.id}`}
-              className="group bg-white dark:bg-brand-navy rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 card-shadow hover:border-brand-blue/50 transition flex flex-col justify-between gap-4"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-brand-navy/8 dark:bg-brand-orange/15 text-brand-navy dark:text-brand-orange flex items-center justify-center shrink-0">
-                    <Briefcase className="h-5 w-5" />
+        <div className="space-y-4">
+          {paginated.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 dark:border-white/15 p-10 text-center text-sm text-brand-slate dark:text-slate-400">
+              No clients match your current filters.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {paginated.map((client) => (
+                <Link
+                  key={client.id}
+                  href={`/clients/${client.id}`}
+                  className="group bg-white dark:bg-brand-navy rounded-xl border border-slate-200/80 dark:border-white/10 p-4 hover:border-brand-blue/50 transition flex flex-col justify-between gap-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-brand-navy/8 dark:bg-brand-orange/15 text-brand-navy dark:text-brand-orange flex items-center justify-center shrink-0">
+                        <Briefcase className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h2 className="font-display text-sm font-bold text-brand-navy dark:text-white group-hover:text-brand-blue transition">
+                          {client.name}
+                        </h2>
+                        <p className="text-xs text-slate-400">{client.industry || 'Digital Growth Client'}</p>
+                      </div>
+                    </div>
+
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 dark:border-white/15 bg-slate-50/80 dark:bg-white/5 px-2.5 py-0.5 text-[11px] font-medium capitalize">
+                      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[client.status] ?? 'bg-emerald-500'}`} />
+                      {client.status}
+                    </span>
                   </div>
-                  <div>
-                    <h2 className="font-display text-base font-bold text-brand-navy dark:text-white group-hover:text-brand-blue transition">
-                      {client.name}
-                    </h2>
-                    <p className="text-xs text-brand-slate dark:text-slate-400">
-                      {client.industry || 'Digital Growth Client'}
-                    </p>
+
+                  <div className="pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs">
+                    <span className="font-display font-bold text-sm">
+                      {formatINR(Number(client.monthly_retainer_inr || 0))}
+                    </span>
+                    <span className="inline-flex items-center gap-1 font-semibold text-brand-blue">
+                      Open 360°
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </span>
                   </div>
-                </div>
+                </Link>
+              ))}
+            </div>
+          )}
 
-                <span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize bg-emerald-500/10 text-emerald-600 dark:text-brand-whatsapp">
-                  {client.status}
-                </span>
-              </div>
-
-              <div className="space-y-1.5 text-xs text-brand-slate dark:text-slate-300">
-                {client.location && (
-                  <p className="flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                    {client.location}
-                  </p>
-                )}
-                {client.service_package && (
-                  <p className="font-medium text-brand-blue">{client.service_package}</p>
-                )}
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs">
-                <div>
-                  <span className="text-slate-400 block text-[11px]">Monthly Retainer</span>
-                  <span className="font-display font-bold text-sm text-brand-navy dark:text-white">
-                    {formatINR(Number(client.monthly_retainer_inr || 0))}
-                  </span>
-                </div>
-                <span className="inline-flex items-center gap-1 font-semibold text-brand-blue">
-                  Open 360° Profile
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </span>
-              </div>
-            </Link>
-          ))}
+          <div className="bg-white dark:bg-brand-navy rounded-xl border border-slate-200/80 dark:border-white/10 overflow-hidden">
+            <TablePagination
+              totalItems={filtered.length}
+              page={safePage}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
         </div>
       )}
 
@@ -178,9 +392,7 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-brand-slate dark:text-slate-300 mb-1">
-                  Company Name *
-                </label>
+                <label className="block text-xs font-semibold mb-1">Company Name *</label>
                 <input
                   name="name"
                   required
@@ -191,9 +403,7 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-brand-slate dark:text-slate-300 mb-1">
-                    Industry
-                  </label>
+                  <label className="block text-xs font-semibold mb-1">Industry</label>
                   <input
                     name="industry"
                     placeholder="Healthcare / Manufacturing"
@@ -201,9 +411,7 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-brand-slate dark:text-slate-300 mb-1">
-                    Location
-                  </label>
+                  <label className="block text-xs font-semibold mb-1">Location</label>
                   <input
                     name="location"
                     placeholder="Coimbatore, TN"
@@ -214,9 +422,7 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-brand-slate dark:text-slate-300 mb-1">
-                    Monthly Retainer (INR)
-                  </label>
+                  <label className="block text-xs font-semibold mb-1">Monthly Retainer (INR)</label>
                   <input
                     name="monthly_retainer_inr"
                     type="number"
@@ -226,9 +432,7 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-brand-slate dark:text-slate-300 mb-1">
-                    Service Package
-                  </label>
+                  <label className="block text-xs font-semibold mb-1">Service Package</label>
                   <input
                     name="service_package"
                     placeholder="SEO + Meta Ads + WhatsApp"
@@ -238,9 +442,7 @@ export function ClientsManager({ clients }: { clients: ClientItem[] }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-brand-slate dark:text-slate-300 mb-1">
-                  Website
-                </label>
+                <label className="block text-xs font-semibold mb-1">Website</label>
                 <input
                   name="website"
                   placeholder="https://example.com"

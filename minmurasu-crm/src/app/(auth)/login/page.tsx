@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
-import { ArrowRight, Eye, EyeOff, Globe, Loader2, Lock, Mail } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Globe, HelpCircle, Loader2, Lock, Mail, MessageCircle, X } from 'lucide-react';
 import { MurasuLogo } from '@/components/brand/murasu-logo';
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const supabaseReady = isSupabaseConfigured();
@@ -289,9 +290,16 @@ export default function LoginPage() {
               </div>
 
               <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between text-xs text-brand-slate dark:text-slate-400">
-                <span>Need onboarding help?</span>
+                <button
+                  type="button"
+                  onClick={() => setOnboardingOpen(true)}
+                  className="inline-flex items-center gap-1.5 font-medium text-brand-blue hover:underline cursor-pointer"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                  <span>Need onboarding help?</span>
+                </button>
                 <a
-                  href="https://www.minmurasu.digital"
+                  href="https://wa.me/919486772206?text=Hi%20MIN%20MURASU%2C%20I%20need%20onboarding%20help%20for%20the%20CRM%20Portal."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-brand-whatsapp hover:underline"
@@ -304,6 +312,54 @@ export default function LoginPage() {
           </section>
         </div>
       </main>
+
+      {onboardingOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-brand-navy rounded-2xl border border-slate-200 dark:border-white/15 shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-lg font-bold text-brand-navy dark:text-white">
+                Onboarding &amp; Portal Access
+              </h3>
+              <button
+                type="button"
+                onClick={() => setOnboardingOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                aria-label="Close onboarding help"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs leading-relaxed text-brand-slate dark:text-slate-300">
+              <p>
+                <strong>Client Accounts:</strong> Your MIN MURASU Account Manager provisions your portal login and scopes it to your organization&apos;s campaigns, leads, and reports.
+              </p>
+              <p>
+                <strong>Agency Team Members:</strong> Sign in with your work email or Google Workspace SSO, then ask a Super Admin to assign your role under <em>Administration → Team Members</em>.
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+              <a
+                href="https://wa.me/919486772206?text=Hi%20MIN%20MURASU%2C%20I%20need%20onboarding%20help%20for%20the%20CRM%20Portal."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-whatsapp hover:opacity-95 px-4 py-2.5 text-xs font-bold text-white transition"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Chat on WhatsApp
+              </a>
+              <a
+                href="mailto:minmurasu.digital@gmail.com?subject=MIN%20MURASU%20CRM%20Onboarding%20Help"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-white/15 px-4 py-2.5 text-xs font-semibold text-brand-navy dark:text-white hover:border-brand-blue transition"
+              >
+                <Mail className="h-4 w-4 text-brand-blue" />
+                Email Support
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

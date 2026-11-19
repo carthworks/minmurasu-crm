@@ -1,76 +1,55 @@
 import { Suspense } from 'react';
-import { Users } from 'lucide-react';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
-import { ROLE_LABELS, type UserRole } from '@/lib/auth/rbac';
+import { getCurrentUserContext } from '@/lib/auth/session';
+import { canManageSettings, type UserRole } from '@/lib/auth/rbac';
+import { TeamManager, type TeamMemberRow } from '@/components/settings/team-manager';
 
 async function TeamContent() {
-  const members = isSupabaseConfigured()
-    ? (
-        await (await createClient())
-          .from('organization_members')
-          .select('id, role, is_active, profiles(full_name, email, job_title)')
-      ).data ?? []
-    : [];
+  if (!isSupabaseConfigured()) {
+    return <TeamManager initialMembers={[]} clients={[]} canEdit={false} />;
+  }
+
+  const ctx = await getCurrentUserContext();
+  const canEdit = ctx ? canManageSettings(ctx.role) : false;
+
+  const supabase = await createClient();
+  const [{ data: membersRaw }, { data: clients }] = await Promise.all([
+    supabase
+      .from('organization_members')
+      .select('id, role, client_id, is_active, profiles(full_name, email, job_title)')
+      .order('created_at', { ascending: true }),
+    supabase.from('clients').select('id, name').is('deleted_at', null).order('name'),
+  ]);
+
+  const members: TeamMemberRow[] = (membersRaw ?? []).map((m) => {
+    const prof = m.profiles as unknown as {
+      full_name: string;
+      email: string;
+      job_title: string | null;
+    } | null;
+    return {
+      id: m.id,
+      fullName: prof?.full_name ?? 'User',
+      email: prof?.email ?? '—',
+      jobTitle: prof?.job_title ?? null,
+      role: m.role as UserRole,
+      clientId: m.client_id,
+      isActive: m.is_active,
+    };
+  });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-extrabold text-brand-navy dark:text-white">
-          Team Members &amp; RBAC
-        </h1>
-        <p className="text-sm text-brand-slate dark:text-slate-300 mt-0.5">
-          Role-based access control across MIN MURASU agency staff and client users.
-        </p>
-      </div>
-
-      <div className="bg-white dark:bg-brand-navy rounded-2xl border border-slate-200/80 dark:border-white/10 card-shadow overflow-hidden">
-        {members.length === 0 ? (
-          <div className="p-10 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
-            <Users className="h-5 w-5 text-brand-blue" />
-            <span>No organization members found.</span>
-          </div>
-        ) : (
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 dark:border-white/10 bg-slate-50/60 dark:bg-brand-navy-surface text-[11px] font-semibold uppercase text-slate-500">
-                <th className="py-3 px-5">Member</th>
-                <th className="py-3 px-4">Role</th>
-                <th className="py-3 px-5 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-white/10">
-              {members.map((m) => {
-                const prof = m.profiles as unknown as {
-                  full_name: string;
-                  email: string;
-                  job_title: string | null;
-                } | null;
-                return (
-                  <tr key={m.id}>
-                    <td className="py-3.5 px-5">
-                      <p className="font-semibold">{prof?.full_name ?? 'User'}</p>
-                      <p className="text-xs text-slate-400">{prof?.email ?? '—'}</p>
-                    </td>
-                    <td className="py-3.5 px-4 text-xs font-semibold text-brand-blue">
-                      {ROLE_LABELS[m.role as UserRole] ?? m.role}
-                    </td>
-                    <td className="py-3.5 px-5 text-right text-xs">
-                      {m.is_active ? 'Active' : 'Inactive'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
+    <TeamManager
+      initialMembers={members}
+      clients={clients ?? []}
+      canEdit={canEdit}
+    />
   );
 }
 
 export default function TeamPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-brand-slate">Loading team...</div>}>
+    <Suspense fallback={<div className="p-6 text-sm text-brand-slate">Loading team &amp; roles...</div>}>
       <TeamContent />
     </Suspense>
   );

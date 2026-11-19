@@ -2,15 +2,36 @@ import { Suspense } from 'react';
 import { getDashboardData } from '@/lib/queries/dashboard';
 import { ReportsView } from '@/components/analytics/reports-view';
 
-async function ReportsContent() {
-  const data = await getDashboardData();
-  return <ReportsView kpis={data.kpis} rows={data.campaignRows} />;
+async function ReportsContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ clientId?: string }>;
+}) {
+  const params = await searchParams;
+  const selectedClientId = params.clientId ?? 'all';
+  const data = await getDashboardData({ clientId: selectedClientId });
+
+  const matchedClient = data.clients.find((c) => c.id === selectedClientId);
+  const selectedClientName = matchedClient?.name ?? 'All Active Clients';
+
+  return (
+    <ReportsView
+      kpis={data.kpis}
+      rows={data.campaignRows}
+      selectedClientId={selectedClientId}
+      selectedClientName={selectedClientName}
+    />
+  );
 }
 
-export default function ReportsPage() {
+export default function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ clientId?: string }>;
+}) {
   return (
     <Suspense fallback={<div className="p-6 text-sm text-brand-slate">Generating report...</div>}>
-      <ReportsContent />
+      <ReportsContent searchParams={searchParams} />
     </Suspense>
   );
 }

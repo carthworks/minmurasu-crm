@@ -2,9 +2,46 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Download, Kanban, Plus, Search, X } from 'lucide-react';
+import { BarChart2, Briefcase, Download, Flag, Kanban, Mail, Plus, Search, Tag, TrendingUp, X } from 'lucide-react';
 import { createLeadAction } from '@/lib/actions/crm';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { formatINR } from '@/lib/utils';
+
+const STAGE_DOT_COLORS: Record<string, string> = {
+  new: 'bg-brand-blue',
+  contacted: 'bg-sky-500',
+  qualified: 'bg-indigo-500',
+  proposal_sent: 'bg-amber-500',
+  negotiation: 'bg-violet-500',
+  won: 'bg-emerald-500',
+  lost: 'bg-rose-500',
+};
+
+function ScoreSegments({ score }: { score: number }) {
+  const filled = Math.round(Math.max(0, Math.min(100, score)) / 10);
+  const barColor =
+    score >= 85
+      ? 'bg-emerald-500'
+      : score >= 65
+        ? 'bg-brand-blue'
+        : 'bg-amber-500';
+
+  return (
+    <div className="inline-flex items-center gap-2">
+      <span className="text-xs font-semibold tabular-nums w-5 text-right">{score}</span>
+      <div className="flex items-center gap-0.5" aria-label={`Score ${score} out of 100`}>
+        {Array.from({ length: 10 }).map((_, idx) => (
+          <span
+            key={idx}
+            className={`h-2.5 w-1 rounded-[1px] ${
+              idx < filled ? barColor : 'bg-slate-200 dark:bg-white/15'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export interface LeadItem {
   id: string;
@@ -42,23 +79,37 @@ export function LeadsManager({
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'score_desc' | 'deal_desc' | 'name_asc'>('score_desc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allowDup, setAllowDup] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const filtered = leads.filter((l) => {
-    const q = search.trim().toLowerCase();
-    const matchesQ =
-      !q ||
-      l.name.toLowerCase().includes(q) ||
-      (l.company ?? '').toLowerCase().includes(q) ||
-      (l.email ?? '').toLowerCase().includes(q) ||
-      (l.phone ?? '').toLowerCase().includes(q);
-    const matchesStage = stageFilter === 'all' || l.stage === stageFilter;
-    const matchesSource = sourceFilter === 'all' || l.source === sourceFilter;
-    return matchesQ && matchesStage && matchesSource;
-  });
+  const filtered = leads
+    .filter((l) => {
+      const q = search.trim().toLowerCase();
+      const matchesQ =
+        !q ||
+        l.name.toLowerCase().includes(q) ||
+        (l.company ?? '').toLowerCase().includes(q) ||
+        (l.email ?? '').toLowerCase().includes(q) ||
+        (l.phone ?? '').toLowerCase().includes(q);
+      const matchesStage = stageFilter === 'all' || l.stage === stageFilter;
+      const matchesSource = sourceFilter === 'all' || l.source === sourceFilter;
+      return matchesQ && matchesStage && matchesSource;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'deal_desc') {
+        return Number(b.expected_deal_value_inr ?? 0) - Number(a.expected_deal_value_inr ?? 0);
+      }
+      if (sortBy === 'name_asc') return a.name.localeCompare(b.name);
+      return b.lead_score - a.lead_score;
+    });
+
+  const safePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / pageSize)));
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   function handleExportCsv() {
     const headers = ['Name', 'Company', 'Email', 'Phone', 'Source', 'Stage', 'Score', 'Deal Value (INR)'];
@@ -129,25 +180,25 @@ export function LeadsManager({
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[220px] max-w-sm">
-          <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+      {/* Compact Filter Pill Bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, company, email, phone..."
-            className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy pl-10 pr-4 py-2 text-sm text-brand-navy dark:text-white focus:border-brand-blue focus:outline-none"
+            placeholder="Search name, company, email..."
+            className="w-full h-8 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy pl-8 pr-3 text-xs text-brand-navy dark:text-white focus:border-brand-blue focus:outline-none"
           />
         </div>
 
         <select
           value={stageFilter}
           onChange={(e) => setStageFilter(e.target.value)}
-          className="rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-3 py-2 text-xs font-medium"
+          className="h-8 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-2.5 text-xs font-medium"
         >
-          <option value="all">All Stages</option>
+          <option value="all">Stage: Any</option>
           <option value="new">New</option>
           <option value="contacted">Contacted</option>
           <option value="qualified">Qualified</option>
@@ -159,10 +210,13 @@ export function LeadsManager({
 
         <select
           value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value)}
-          className="rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-3 py-2 text-xs font-medium"
+          onChange={(e) => {
+            setSourceFilter(e.target.value);
+            setPage(1);
+          }}
+          className="h-8 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-2.5 text-xs font-medium"
         >
-          <option value="all">All Sources</option>
+          <option value="all">Source: Any</option>
           {LEAD_SOURCES.map((s) => (
             <option key={s} value={s}>
               {s.replace('_', ' ')}
@@ -170,18 +224,28 @@ export function LeadsManager({
           ))}
         </select>
 
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          className="h-8 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-2.5 text-xs font-medium"
+        >
+          <option value="score_desc">Sort: Score High–Low</option>
+          <option value="deal_desc">Sort: Deal Value High–Low</option>
+          <option value="name_asc">Sort: Name A–Z</option>
+        </select>
+
         <button
           type="button"
           onClick={handleExportCsv}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-3 py-2 text-xs font-medium hover:border-brand-blue transition cursor-pointer"
+          className="h-8 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-brand-navy px-2.5 text-xs font-medium hover:border-brand-blue transition cursor-pointer"
         >
-          <Download className="h-3.5 w-3.5" />
+          <Download className="h-3.5 w-3.5 text-slate-400" />
           <span>Export CSV</span>
         </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-brand-navy rounded-2xl border border-slate-200/80 dark:border-white/10 card-shadow overflow-hidden">
+      {/* Crisp Data Table */}
+      <div className="bg-white dark:bg-brand-navy rounded-xl border border-slate-200/80 dark:border-white/10 overflow-hidden">
         {filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-brand-slate dark:text-slate-400">
             No leads found. Click <strong>Add Lead</strong> to create your first lead.
@@ -190,38 +254,80 @@ export function LeadsManager({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-white/10 bg-slate-50/60 dark:bg-brand-navy-surface text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-300">
-                  <th className="py-3 px-5">Lead &amp; Company</th>
-                  <th className="py-3 px-4">Contact</th>
-                  <th className="py-3 px-4">Source</th>
-                  <th className="py-3 px-4">Stage</th>
-                  <th className="py-3 px-4">Score</th>
-                  <th className="py-3 px-5 text-right">Deal Value</th>
+                <tr className="border-b border-slate-200/80 dark:border-white/10 bg-slate-50/70 dark:bg-brand-navy-surface text-[11px] font-medium text-slate-500 dark:text-slate-300">
+                  <th className="py-2.5 px-4">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Briefcase className="h-3.5 w-3.5 text-slate-400" />
+                      Lead &amp; Account
+                    </span>
+                  </th>
+                  <th className="py-2.5 px-4">
+                    <span className="inline-flex items-center gap-1.5">
+                      <BarChart2 className="h-3.5 w-3.5 text-slate-400" />
+                      Lead Score
+                    </span>
+                  </th>
+                  <th className="py-2.5 px-4">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Flag className="h-3.5 w-3.5 text-slate-400" />
+                      Stage
+                    </span>
+                  </th>
+                  <th className="py-2.5 px-4">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 text-slate-400" />
+                      Contact
+                    </span>
+                  </th>
+                  <th className="py-2.5 px-4">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Tag className="h-3.5 w-3.5 text-slate-400" />
+                      Source
+                    </span>
+                  </th>
+                  <th className="py-2.5 px-4 text-right">
+                    <span className="inline-flex items-center gap-1.5 justify-end">
+                      <TrendingUp className="h-3.5 w-3.5 text-slate-400" />
+                      Deal Value
+                    </span>
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/10 text-sm">
-                {filtered.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-slate-50/70 dark:hover:bg-white/5 transition">
-                    <td className="py-3.5 px-5">
-                      <p className="font-semibold text-brand-navy dark:text-white">{lead.name}</p>
-                      <p className="text-xs text-brand-slate dark:text-slate-400">
-                        {lead.company || lead.interested_service || '—'}
-                      </p>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/10 text-[13px]">
+                {paginated.map((lead) => (
+                  <tr key={lead.id} className="hover:bg-slate-50/80 dark:hover:bg-white/5 transition">
+                    <td className="py-2.5 px-4">
+                      <div className="flex items-center gap-2.5">
+                        <span className="h-6 w-6 rounded-md bg-brand-navy/8 dark:bg-white/10 text-[10px] font-bold flex items-center justify-center shrink-0">
+                          {lead.name.slice(0, 2).toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-brand-navy dark:text-white truncate">{lead.name}</p>
+                          <p className="text-[11px] text-slate-400 truncate">
+                            {lead.company || lead.interested_service || '—'}
+                          </p>
+                        </div>
+                      </div>
                     </td>
-                    <td className="py-3.5 px-4 text-xs text-brand-slate dark:text-slate-300">
-                      <p>{lead.email || '—'}</p>
-                      <p className="text-slate-400">{lead.phone || ''}</p>
+                    <td className="py-2.5 px-4">
+                      <ScoreSegments score={lead.lead_score} />
                     </td>
-                    <td className="py-3.5 px-4 text-xs capitalize text-brand-slate dark:text-slate-300">
-                      {lead.source.replace('_', ' ')}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize bg-brand-blue/10 text-brand-blue">
+                    <td className="py-2.5 px-4">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 dark:border-white/15 bg-slate-50/80 dark:bg-white/5 px-2.5 py-0.5 text-xs font-medium capitalize text-brand-navy dark:text-slate-200">
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${STAGE_DOT_COLORS[lead.stage] ?? 'bg-brand-blue'}`}
+                        />
                         {lead.stage.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-xs">{lead.lead_score}/100</td>
-                    <td className="py-3.5 px-5 text-right font-semibold">
+                    <td className="py-2.5 px-4 text-xs text-brand-slate dark:text-slate-300">
+                      <p>{lead.email || '—'}</p>
+                      <p className="text-slate-400 text-[11px]">{lead.phone || ''}</p>
+                    </td>
+                    <td className="py-2.5 px-4 text-xs capitalize text-brand-slate dark:text-slate-300">
+                      {lead.source.replace('_', ' ')}
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-semibold tabular-nums">
                       {lead.expected_deal_value_inr ? formatINR(lead.expected_deal_value_inr) : '—'}
                     </td>
                   </tr>
@@ -230,6 +336,13 @@ export function LeadsManager({
             </table>
           </div>
         )}
+        <TablePagination
+          totalItems={filtered.length}
+          page={safePage}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* Add Lead Modal */}

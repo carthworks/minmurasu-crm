@@ -311,3 +311,156 @@ export async function updateOrganizationAction(formData: FormData) {
   revalidatePath('/settings');
   return { success: true };
 }
+
+export async function updateMemberRoleAction(input: {
+  memberId: string;
+  role: string;
+  clientId: string | null;
+  isActive: boolean;
+}) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx || (ctx.role !== 'super_admin' && ctx.role !== 'agency_admin')) {
+    return { error: 'Unauthorized: admin access required to change user roles.' };
+  }
+
+  const validRoles = [
+    'super_admin',
+    'agency_admin',
+    'marketing_manager',
+    'sales_bd',
+    'team_member',
+    'client',
+  ];
+  if (!validRoles.includes(input.role)) {
+    return { error: 'Invalid role selected.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('organization_members')
+    .update({
+      role: input.role,
+      client_id: input.role === 'client' ? input.clientId : null,
+      is_active: input.isActive,
+    })
+    .eq('id', input.memberId)
+    .eq('organization_id', ctx.organizationId);
+
+  if (error) return { error: error.message };
+
+  await supabase.from('audit_logs').insert({
+    organization_id: ctx.organizationId,
+    actor_id: ctx.userId,
+    action: 'member.role_updated',
+    entity_type: 'organization_member',
+    entity_id: input.memberId,
+    details: { role: input.role, clientId: input.clientId, isActive: input.isActive },
+  });
+
+  revalidatePath('/settings/team');
+  return { success: true };
+}
+
+const invoiceSchema = z.object({
+  client_id: z.string().uuid('Select a valid client'),
+  invoice_number: z.string().trim().min(3, 'Invoice number is required'),
+  amount_inr: z.coerce.number().positive('Amount must be greater than 0'),
+  due_date: z.string().min(8, 'Due date is required'),
+  status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled']).default('sent'),
+  notes: z.string().trim().optional(),
+});
+
+export async function createInvoiceAction(formData: FormData) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx || (ctx.role !== 'super_admin' && ctx.role !== 'agency_admin')) {
+    return { error: 'Unauthorized: admin access required to create invoices.' };
+  }
+
+  const parsed = invoiceSchema.safeParse({
+    client_id: formData.get('client_id'),
+    invoice_number: formData.get('invoice_number'),
+    amount_inr: formData.get('amount_inr'),
+    due_date: formData.get('due_date'),
+    status: formData.get('status') || 'sent',
+    notes: formData.get('notes') || undefined,
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Invalid invoice data.' };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('invoices')
+    .insert({
+      organization_id: ctx.organizationId,
+      ...parsed.data,
+    })
+    .select('id')
+    .single();
+
+  if (error) return { error: error.message };
+
+  await supabase.from('audit_logs').insert({
+    organization_id: ctx.organizationId,
+    actor_id: ctx.userId,
+    action: 'invoice.created',
+    entity_type: 'invoice',
+    entity_id: data.id,
+    details: {
+      invoice_number: parsed.data.invoice_number,
+      amount_inr: parsed.data.amount_inr,
+    },
+  });
+
+  revalidatePath('/billing');
+  revalidatePath(`/clients/${parsed.data.client_id}`);
+  return { success: true };
+}
+
+export async function recordPaymentAction(formData: FormData) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx || (ctx.role !== 'super_admin' && ctx.role !== 'agency_admin')) {
+    return { error: 'Unauthorized: admin access required to record payments.' };
+  }
+
+  const invoiceId = String(formData.get('invoice_id') ?? '');
+  const amountInr = Number(formData.get('amount_inr') ?? 0);
+  const paymentMethod = String(formData.get('payment_method') ?? 'Bank Transfer / NEFT').trim();
+  const referenceNumber = String(formData.get('reference_number') ?? '').trim();
+
+  if (!invoiceId || amountInr <= 0) {
+    return { error: 'Valid invoice and positive payment amount are required.' };
+  }
+
+  const supabase = await createClient();
+  const { error: payError } = await supabase.from('payments').insert({
+    organization_id: ctx.organizationId,
+    invoice_id: invoiceId,
+    amount_inr: amountInr,
+    payment_method: paymentMethod,
+    reference_number: referenceNumber || null,
+  });
+
+  if (payError) return { error: payError.message };
+
+  const { error: invError } = await supabase
+    .from('invoices')
+    .update({ status: 'paid' })
+    .eq('id', invoiceId)
+    .eq('organization_id', ctx.organizationId);
+
+  if (invError) return { error: invError.message };
+
+  await supabase.from('audit_logs').insert({
+    organization_id: ctx.organizationId,
+    actor_id: ctx.userId,
+    action: 'payment.recorded',
+    entity_type: 'invoice',
+    entity_id: invoiceId,
+    details: { amount_inr: amountInr, payment_method: paymentMethod },
+  });
+
+  revalidatePath('/billing');
+  return { success: true };
+}

@@ -142,12 +142,12 @@ export function Sidebar({ open, onClose, userRole, userName }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-40 w-64 h-screen lg:h-full overflow-hidden bg-white dark:bg-brand-navy border-r border-slate-200/80 dark:border-white/10 flex flex-col justify-between transition-transform duration-200 lg:translate-x-0 lg:static lg:shrink-0',
+        'fixed inset-y-0 left-0 z-40 w-60 h-screen lg:h-full overflow-hidden bg-white dark:bg-brand-navy border-r border-slate-200/80 dark:border-white/10 flex flex-col justify-between transition-transform duration-200 lg:translate-x-0 lg:static lg:shrink-0',
         open ? 'translate-x-0' : '-translate-x-full'
       )}
     >
       <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
-        <div className="h-16 px-5 flex items-center justify-between border-b border-slate-100 dark:border-white/10 shrink-0">
+        <div className="h-14 px-4 flex items-center justify-between border-b border-slate-100 dark:border-white/10 shrink-0">
           <Link href="/" onClick={onClose}>
             <MurasuLogo size="sm" subtitle="minmurasu.digital" />
           </Link>
@@ -161,7 +161,7 @@ export function Sidebar({ open, onClose, userRole, userName }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="p-3 space-y-3 overflow-y-auto overscroll-contain flex-1">
+        <nav className="px-2.5 py-3 space-y-3 overflow-y-auto overscroll-contain flex-1">
           {NAV_SECTIONS.filter((s) => !(isClient && s.agencyOnly)).map((section) => {
             const visibleItems = section.items.filter((item) => !(isClient && item.agencyOnly));
             if (visibleItems.length === 0) return null;
@@ -170,20 +170,20 @@ export function Sidebar({ open, onClose, userRole, userName }: SidebarProps) {
             const isCollapsed = collapsed[section.title] ?? false;
 
             return (
-              <div key={section.title} className="space-y-1">
+              <div key={section.title} className="space-y-0.5">
                 <button
                   type="button"
                   onClick={() => toggleSection(section.title)}
                   aria-expanded={!isCollapsed}
-                  className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400/80 hover:text-brand-navy dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 transition cursor-pointer"
+                  className="w-full flex items-center justify-between px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400/80 hover:text-brand-navy dark:hover:text-white transition cursor-pointer"
                 >
                   <span className={hasActiveItem ? 'text-brand-orange' : undefined}>
                     {section.title}
                   </span>
                   {isCollapsed ? (
-                    <ChevronRight className="h-3.5 w-3.5" />
+                    <ChevronRight className="h-3 w-3" />
                   ) : (
-                    <ChevronDown className="h-3.5 w-3.5" />
+                    <ChevronDown className="h-3 w-3" />
                   )}
                 </button>
 
@@ -198,19 +198,24 @@ export function Sidebar({ open, onClose, userRole, userName }: SidebarProps) {
                             href={item.href}
                             onClick={onClose}
                             className={cn(
-                              'flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm font-medium transition',
+                              'flex items-center justify-between gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] font-medium transition',
                               active
-                                ? 'bg-brand-orange/12 text-brand-orange font-semibold'
+                                ? 'bg-slate-100/90 dark:bg-white/10 text-brand-navy dark:text-white font-semibold shadow-[inset_0_0_0_1px_rgba(13,32,64,0.06)] dark:shadow-none'
                                 : 'text-brand-slate dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-brand-navy dark:hover:text-white'
                             )}
                           >
-                            <Icon
-                              className={cn(
-                                'h-4 w-4 shrink-0',
-                                active ? 'text-brand-orange' : 'text-slate-400 dark:text-slate-400'
-                              )}
-                            />
-                            <span className="truncate">{item.label}</span>
+                            <span className="flex items-center gap-2.5 min-w-0">
+                              <Icon
+                                className={cn(
+                                  'h-4 w-4 shrink-0',
+                                  active ? 'text-brand-orange' : 'text-slate-400 dark:text-slate-400'
+                                )}
+                              />
+                              <span className="truncate">{item.label}</span>
+                            </span>
+                            {active && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-brand-orange shrink-0" />
+                            )}
                           </Link>
                         </li>
                       );

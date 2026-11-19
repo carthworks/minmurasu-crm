@@ -1,78 +1,68 @@
 import { Suspense } from 'react';
-import { CreditCard } from 'lucide-react';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
-import { formatINR } from '@/lib/utils';
+import { getCurrentUserContext } from '@/lib/auth/session';
+import { canManageSettings } from '@/lib/auth/rbac';
+import { BillingManager, type InvoiceRow } from '@/components/billing/billing-manager';
 
 async function BillingContent() {
-  const invoices = isSupabaseConfigured()
-    ? (
-        await (await createClient())
-          .from('invoices')
-          .select('id, invoice_number, amount_inr, due_date, status, clients(name)')
-          .order('due_date', { ascending: false })
-      ).data ?? []
-    : [];
+  if (!isSupabaseConfigured()) {
+    return (
+      <BillingManager
+        invoices={[]}
+        clients={[]}
+        activeRetainersInr={0}
+        canManage={false}
+      />
+    );
+  }
+
+  const ctx = await getCurrentUserContext();
+  const canManage = ctx ? canManageSettings(ctx.role) : false;
+
+  const supabase = await createClient();
+  const [{ data: invoicesRaw }, { data: clientsRaw }] = await Promise.all([
+    supabase
+      .from('invoices')
+      .select('id, invoice_number, client_id, amount_inr, due_date, status, notes, clients(name)')
+      .order('due_date', { ascending: false }),
+    supabase
+      .from('clients')
+      .select('id, name, monthly_retainer_inr, status')
+      .is('deleted_at', null)
+      .order('name'),
+  ]);
+
+  const invoices: InvoiceRow[] = (invoicesRaw ?? []).map((inv) => {
+    const cl = inv.clients as unknown as { name: string } | null;
+    return {
+      id: inv.id,
+      invoice_number: inv.invoice_number,
+      client_id: inv.client_id,
+      client_name: cl?.name ?? '—',
+      amount_inr: Number(inv.amount_inr || 0),
+      due_date: inv.due_date,
+      status: inv.status,
+      notes: inv.notes,
+    };
+  });
+
+  const activeRetainersInr = (clientsRaw ?? [])
+    .filter((c) => c.status === 'active')
+    .reduce((sum, c) => sum + Number(c.monthly_retainer_inr || 0), 0);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-extrabold text-brand-navy dark:text-white">
-          Billing &amp; Invoices
-        </h1>
-        <p className="text-sm text-brand-slate dark:text-slate-300 mt-0.5">
-          Track monthly retainers, invoices, and outstanding balances in INR.
-        </p>
-      </div>
-
-      <div className="bg-white dark:bg-brand-navy rounded-2xl border border-slate-200/80 dark:border-white/10 card-shadow overflow-hidden">
-        {invoices.length === 0 ? (
-          <div className="p-10 text-center text-sm text-brand-slate dark:text-slate-400 flex flex-col items-center gap-2">
-            <CreditCard className="h-5 w-5 text-brand-blue" />
-            <span>No invoices issued yet.</span>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-white/10 bg-slate-50/60 dark:bg-brand-navy-surface text-[11px] font-semibold uppercase text-slate-500">
-                  <th className="py-3 px-5">Invoice #</th>
-                  <th className="py-3 px-4">Client</th>
-                  <th className="py-3 px-4">Due Date</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-5 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/10">
-                {invoices.map((inv) => {
-                  const cl = inv.clients as unknown as { name: string } | null;
-                  return (
-                    <tr key={inv.id}>
-                      <td className="py-3.5 px-5 font-semibold">{inv.invoice_number}</td>
-                      <td className="py-3.5 px-4 text-xs">{cl?.name ?? '—'}</td>
-                      <td className="py-3.5 px-4 text-xs">{inv.due_date}</td>
-                      <td className="py-3.5 px-4">
-                        <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize bg-brand-orange/12 text-brand-orange">
-                          {inv.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 text-right font-bold">
-                        {formatINR(Number(inv.amount_inr))}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
+    <BillingManager
+      invoices={invoices}
+      clients={clientsRaw ?? []}
+      activeRetainersInr={activeRetainersInr}
+      canManage={canManage}
+    />
   );
 }
 
 export default function BillingPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-brand-slate">Loading billing...</div>}>
+    <Suspense fallback={<div className="p-6 text-sm text-brand-slate">Loading billing &amp; invoices...</div>}>
       <BillingContent />
     </Suspense>
   );
