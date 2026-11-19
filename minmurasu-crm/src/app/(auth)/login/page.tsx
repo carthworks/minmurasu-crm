@@ -124,7 +124,15 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-brand-navy-surface/80 shadow-lg">
+              <img
+                src="/brand/min-murasu-banner.png"
+                alt="MIN MURASU — The Digital Drum"
+                className="w-full h-36 object-cover"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-1">
               <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-brand-navy-surface/80 backdrop-blur p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-blue">Growth Stack</p>
                 <p className="mt-1 font-display text-sm font-bold text-brand-navy dark:text-white">

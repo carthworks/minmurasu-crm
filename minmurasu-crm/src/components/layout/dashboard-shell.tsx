@@ -50,7 +50,7 @@ export function DashboardShell({
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-screen overflow-hidden flex">
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-xs lg:hidden"
@@ -65,7 +65,7 @@ export function DashboardShell({
         userName={userName}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto">
         <Topbar
           onOpenSidebar={() => setSidebarOpen(true)}
           clients={clients}

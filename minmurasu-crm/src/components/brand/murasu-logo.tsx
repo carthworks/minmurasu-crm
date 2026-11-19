@@ -27,24 +27,15 @@ export function MurasuLogo({
     <div className={cn('inline-flex items-center gap-3', className)}>
       <div
         className={cn(
-          'flex items-center justify-center bg-brand-navy dark:bg-brand-orange text-white shadow-md shadow-brand-orange/20 ring-1 ring-white/15 shrink-0',
+          'flex items-center justify-center bg-white p-1 shadow-md shadow-brand-navy/10 ring-1 ring-slate-200 dark:ring-white/15 shrink-0 overflow-hidden',
           iconSizes[size]
         )}
       >
-        <svg
-          className={size === 'sm' ? 'h-4 w-4' : 'h-6 w-6'}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <ellipse cx="12" cy="7" rx="8" ry="3" />
-          <path d="M4 7v10c0 1.66 3.58 3 8 3s8-1.34 8-3V7" />
-          <path d="M8 12l2.5 2L16 10" />
-        </svg>
+        <img
+          src="/brand/min-murasu-logo.png"
+          alt="MIN MURASU Logo"
+          className="h-full w-full object-contain"
+        />
       </div>
       <div>
         <span

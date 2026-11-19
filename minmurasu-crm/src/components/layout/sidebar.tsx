@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -8,6 +9,8 @@ import {
   Briefcase,
   CalendarDays,
   CheckSquare,
+  ChevronDown,
+  ChevronRight,
   Contact,
   CreditCard,
   FileCheck2,
@@ -115,6 +118,12 @@ export function Sidebar({ open, onClose, userRole, userName }: SidebarProps) {
   const router = useRouter();
   const isClient = userRole === 'client';
 
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  function toggleSection(title: string) {
+    setCollapsed((prev) => ({ ...prev, [title]: !prev[title] }));
+  }
+
   const initials = userName
     .split(/\s+/)
     .slice(0, 2)
@@ -133,11 +142,11 @@ export function Sidebar({ open, onClose, userRole, userName }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-brand-navy border-r border-slate-200/80 dark:border-white/10 flex flex-col justify-between transition-transform duration-200 lg:translate-x-0 lg:static lg:shrink-0',
+        'fixed inset-y-0 left-0 z-40 w-64 h-screen lg:h-full overflow-hidden bg-white dark:bg-brand-navy border-r border-slate-200/80 dark:border-white/10 flex flex-col justify-between transition-transform duration-200 lg:translate-x-0 lg:static lg:shrink-0',
         open ? 'translate-x-0' : '-translate-x-full'
       )}
     >
-      <div className="flex flex-col min-h-0 flex-1">
+      <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
         <div className="h-16 px-5 flex items-center justify-between border-b border-slate-100 dark:border-white/10 shrink-0">
           <Link href="/" onClick={onClose}>
             <MurasuLogo size="sm" subtitle="minmurasu.digital" />
@@ -152,44 +161,62 @@ export function Sidebar({ open, onClose, userRole, userName }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="p-3.5 space-y-5 overflow-y-auto flex-1">
+        <nav className="p-3 space-y-3 overflow-y-auto overscroll-contain flex-1">
           {NAV_SECTIONS.filter((s) => !(isClient && s.agencyOnly)).map((section) => {
             const visibleItems = section.items.filter((item) => !(isClient && item.agencyOnly));
             if (visibleItems.length === 0) return null;
 
+            const hasActiveItem = visibleItems.some((item) => pathname === item.href);
+            const isCollapsed = collapsed[section.title] ?? false;
+
             return (
-              <div key={section.title}>
-                <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400/70">
-                  {section.title}
-                </p>
-                <ul className="space-y-0.5">
-                  {visibleItems.map((item) => {
-                    const Icon = item.icon;
-                    const active = pathname === item.href;
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          onClick={onClose}
-                          className={cn(
-                            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition',
-                            active
-                              ? 'bg-brand-orange/12 text-brand-orange font-semibold'
-                              : 'text-brand-slate dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-brand-navy dark:hover:text-white'
-                          )}
-                        >
-                          <Icon
+              <div key={section.title} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.title)}
+                  aria-expanded={!isCollapsed}
+                  className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400/80 hover:text-brand-navy dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 transition cursor-pointer"
+                >
+                  <span className={hasActiveItem ? 'text-brand-orange' : undefined}>
+                    {section.title}
+                  </span>
+                  {isCollapsed ? (
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </button>
+
+                {!isCollapsed && (
+                  <ul className="space-y-0.5">
+                    {visibleItems.map((item) => {
+                      const Icon = item.icon;
+                      const active = pathname === item.href;
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            onClick={onClose}
                             className={cn(
-                              'h-4 w-4 shrink-0',
-                              active ? 'text-brand-orange' : 'text-slate-400 dark:text-slate-400'
+                              'flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm font-medium transition',
+                              active
+                                ? 'bg-brand-orange/12 text-brand-orange font-semibold'
+                                : 'text-brand-slate dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-brand-navy dark:hover:text-white'
                             )}
-                          />
-                          <span className="truncate">{item.label}</span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
+                          >
+                            <Icon
+                              className={cn(
+                                'h-4 w-4 shrink-0',
+                                active ? 'text-brand-orange' : 'text-slate-400 dark:text-slate-400'
+                              )}
+                            />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
             );
           })}
