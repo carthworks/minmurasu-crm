@@ -1,53 +1,64 @@
 import { Suspense } from 'react';
-import { FileCheck2 } from 'lucide-react';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
+import { getCurrentUserContext } from '@/lib/auth/session';
+import { isAgencyStaffRole } from '@/lib/auth/rbac';
+import {
+  DeliverablesManager,
+  type DeliverableRow,
+} from '@/components/ops/deliverables-manager';
 
 async function DeliverablesContent() {
-  const rows = isSupabaseConfigured()
-    ? (
-        await (await createClient())
-          .from('deliverables')
-          .select('id, title, status, file_url, clients(name), projects(name)')
-          .order('created_at', { ascending: false })
-      ).data ?? []
-    : [];
+  if (!isSupabaseConfigured()) {
+    return <DeliverablesManager deliverables={[]} projects={[]} canCreate={false} />;
+  }
+
+  const ctx = await getCurrentUserContext();
+  const canCreate = ctx ? isAgencyStaffRole(ctx.role) : false;
+
+  const supabase = await createClient();
+  const [{ data: delivRaw }, { data: projRaw }] = await Promise.all([
+    supabase
+      .from('deliverables')
+      .select('id, title, status, file_url, created_at, client_id, clients(name), projects(name)')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('projects')
+      .select('id, name, client_id, clients(name)')
+      .is('deleted_at', null)
+      .order('name'),
+  ]);
+
+  const deliverables: DeliverableRow[] = (delivRaw ?? []).map((d) => {
+    const cl = d.clients as unknown as { name: string } | null;
+    const pr = d.projects as unknown as { name: string } | null;
+    return {
+      id: d.id,
+      title: d.title,
+      file_url: d.file_url,
+      status: d.status,
+      created_at: d.created_at,
+      client_id: d.client_id,
+      client_name: cl?.name ?? '—',
+      project_name: pr?.name ?? '—',
+    };
+  });
+
+  const projects = (projRaw ?? []).map((p) => {
+    const cl = p.clients as unknown as { name: string } | null;
+    return {
+      id: p.id,
+      name: p.name,
+      client_id: p.client_id,
+      client_name: cl?.name ?? '—',
+    };
+  });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-extrabold text-brand-navy dark:text-white">Deliverables</h1>
-        <p className="text-sm text-brand-slate dark:text-slate-300 mt-0.5">
-          Client assets, creatives, and campaign deliverables tracked by project.
-        </p>
-      </div>
-
-      <div className="bg-white dark:bg-brand-navy rounded-2xl border border-slate-200/80 dark:border-white/10 p-6 card-shadow">
-        {rows.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
-            <FileCheck2 className="h-5 w-5 text-brand-blue" />
-            <span>No deliverables uploaded yet.</span>
-          </div>
-        ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-white/10 text-sm">
-            {rows.map((d) => {
-              const cl = d.clients as unknown as { name: string } | null;
-              const pr = d.projects as unknown as { name: string } | null;
-              return (
-                <li key={d.id} className="py-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold">{d.title}</p>
-                    <p className="text-xs text-slate-400">{cl?.name ?? '—'} · {pr?.name ?? '—'}</p>
-                  </div>
-                  <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize bg-brand-blue/10 text-brand-blue">
-                    {d.status.replace('_', ' ')}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    </div>
+    <DeliverablesManager
+      deliverables={deliverables}
+      projects={projects}
+      canCreate={canCreate}
+    />
   );
 }
 

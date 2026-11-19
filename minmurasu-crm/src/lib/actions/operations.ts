@@ -553,3 +553,85 @@ export async function updateOllamaSettingsAction(formData: FormData) {
   revalidatePath('/settings/integrations');
   return { success: true };
 }
+
+const deliverableSchema = z.object({
+  project_id: uuidField('Select a valid project'),
+  client_id: uuidField('Select a valid client'),
+  title: z.string().trim().min(2, 'Deliverable title is required'),
+  file_url: z.string().trim().optional(),
+  status: z
+    .enum(['pending_review', 'in_review', 'approved', 'changes_requested', 'delivered'])
+    .default('pending_review'),
+});
+
+export async function createDeliverableAction(formData: FormData) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx || !isAgencyStaffRole(ctx.role)) {
+    return { error: 'Unauthorized: agency staff access required.' };
+  }
+
+  const parsed = deliverableSchema.safeParse({
+    project_id: formData.get('project_id'),
+    client_id: formData.get('client_id'),
+    title: formData.get('title'),
+    file_url: formData.get('file_url') || undefined,
+    status: formData.get('status') || 'pending_review',
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Invalid deliverable data.' };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('deliverables')
+    .insert({
+      organization_id: ctx.organizationId,
+      project_id: parsed.data.project_id,
+      client_id: parsed.data.client_id,
+      title: parsed.data.title,
+      file_url: parsed.data.file_url || null,
+      uploaded_by: ctx.userId,
+      status: parsed.data.status,
+    })
+    .select('id')
+    .single();
+
+  if (error) return { error: error.message };
+
+  if (parsed.data.status === 'pending_review') {
+    await supabase.from('client_approvals').insert({
+      organization_id: ctx.organizationId,
+      client_id: parsed.data.client_id,
+      deliverable_id: data.id,
+      status: 'pending',
+    });
+  }
+
+  revalidatePath('/deliverables');
+  revalidatePath('/approvals');
+  revalidatePath('/');
+  return { success: true };
+}
+
+export async function updateDeliverableStatusAction(
+  deliverableId: string,
+  status: 'pending_review' | 'in_review' | 'approved' | 'changes_requested' | 'delivered'
+) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx) return { error: 'Unauthorized' };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('deliverables')
+    .update({ status })
+    .eq('id', deliverableId)
+    .eq('organization_id', ctx.organizationId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/deliverables');
+  revalidatePath('/approvals');
+  revalidatePath('/');
+  return { success: true };
+}

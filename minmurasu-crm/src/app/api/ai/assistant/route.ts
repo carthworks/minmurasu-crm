@@ -72,25 +72,50 @@ async function tryOllama(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        stream: false,
-        options: { temperature: 0.3 },
+        stream: true,
+        think: false,
+        keep_alive: '10m',
+        options: { temperature: 0.3, num_predict: 350 },
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
       }),
-      signal: AbortSignal.timeout(120_000),
+      signal: AbortSignal.timeout(180_000),
     });
 
-    if (!chatRes.ok) {
+    if (!chatRes.ok || !chatRes.body) {
       return { error: `Ollama returned HTTP ${chatRes.status} for model "${model}".` };
     }
 
-    const chatJson = (await chatRes.json()) as {
-      message?: { content?: string };
-    };
-    const content = chatJson.message?.content;
-    return content ? { advisory: content, model } : { error: `Ollama model "${model}" returned an empty response.` };
+    const reader = chatRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let content = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const chunk = JSON.parse(trimmed) as { message?: { content?: string } };
+          if (chunk.message?.content) {
+            content += chunk.message.content;
+          }
+        } catch {
+          // Skip partial JSON line
+        }
+      }
+    }
+
+    return content.trim()
+      ? { advisory: content.trim(), model }
+      : { error: `Ollama model "${model}" returned an empty response.` };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown Ollama error';
     return { error: `Ollama connection/generation failed: ${msg}` };
