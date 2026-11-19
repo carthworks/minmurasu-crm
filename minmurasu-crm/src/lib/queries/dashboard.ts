@@ -190,10 +190,79 @@ export async function getDashboardData(filters?: {
     overdueTasksQuery,
   ]);
 
-  if (metricsError) {
-    console.error('[dashboard] dashboard_metrics failed', metricsError.code, metricsError.message);
+  let agg = (metricsData as DashboardMetricsRow | null) ?? null;
+
+  if (metricsError || !agg) {
+    let fClients = supabase
+      .from('clients')
+      .select('id, monthly_retainer_inr, status')
+      .is('deleted_at', null);
+    if (clientFilter) fClients = fClients.eq('id', clientFilter);
+
+    let fLeads = supabase.from('leads').select('id, stage').is('deleted_at', null);
+    if (clientFilter) fLeads = fLeads.eq('client_id', clientFilter);
+
+    let fMetrics = supabase
+      .from('campaign_metrics')
+      .select('campaign_id, metric_date, spend_inr, leads_count, engagements, revenue_attributed_inr')
+      .order('metric_date', { ascending: true });
+    if (clientFilter) fMetrics = fMetrics.eq('client_id', clientFilter);
+    if (from) fMetrics = fMetrics.gte('metric_date', from);
+    if (to) fMetrics = fMetrics.lte('metric_date', to);
+
+    const [{ data: clRows }, { data: ldRows }, { data: mRows }] = await Promise.all([
+      fClients,
+      fLeads,
+      fMetrics,
+    ]);
+
+    const activeCls = (clRows ?? []).filter((c) => c.status === 'active');
+    const mrrInr = activeCls.reduce((s, c) => s + Number(c.monthly_retainer_inr || 0), 0);
+    const ldList = ldRows ?? [];
+    const qualifiedCount = ldList.filter((l) =>
+      ['qualified', 'proposal_sent', 'negotiation', 'won'].includes(l.stage)
+    ).length;
+    const wonCount = ldList.filter((l) => l.stage === 'won').length;
+
+    const trendMap = new Map<string, { leads: number; spend: number; revenue: number }>();
+    const campMap = new Map<string, { leads: number; engagements: number; spend: number; revenue: number }>();
+    let spendTotal = 0;
+    let revTotal = 0;
+
+    for (const m of mRows ?? []) {
+      const s = Number(m.spend_inr || 0);
+      const r = Number(m.revenue_attributed_inr || 0);
+      const l = Number(m.leads_count || 0);
+      const e = Number(m.engagements || 0);
+      spendTotal += s;
+      revTotal += r;
+
+      const tCur = trendMap.get(m.metric_date) ?? { leads: 0, spend: 0, revenue: 0 };
+      tCur.leads += l;
+      tCur.spend += s;
+      tCur.revenue += r;
+      trendMap.set(m.metric_date, tCur);
+
+      const cCur = campMap.get(m.campaign_id) ?? { leads: 0, engagements: 0, spend: 0, revenue: 0 };
+      cCur.leads += l;
+      cCur.engagements += e;
+      cCur.spend += s;
+      cCur.revenue += r;
+      campMap.set(m.campaign_id, cCur);
+    }
+
+    agg = {
+      active_clients: activeCls.length,
+      mrr_inr: mrrInr,
+      total_leads: ldList.length,
+      qualified_leads: qualifiedCount,
+      won_leads: wonCount,
+      spend_inr: spendTotal,
+      revenue_inr: revTotal,
+      trends: Array.from(trendMap.entries()).map(([date, v]) => ({ date, ...v })),
+      by_campaign: Array.from(campMap.entries()).map(([campaign_id, v]) => ({ campaign_id, ...v })),
+    };
   }
-  const agg = (metricsData as DashboardMetricsRow | null) ?? null;
 
   const spend = Number(agg?.spend_inr ?? 0);
   const revenue = Number(agg?.revenue_inr ?? 0);
