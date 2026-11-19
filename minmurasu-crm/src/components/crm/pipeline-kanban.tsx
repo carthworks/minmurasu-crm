@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useOptimistic, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { GripVertical, List } from 'lucide-react';
 import { updateLeadStageAction } from '@/lib/actions/crm';
@@ -18,24 +18,21 @@ const STAGES = [
 ] as const;
 
 export function PipelineKanban({ initialLeads }: { initialLeads: LeadItem[] }) {
-  const [leads, setLeads] = useState(initialLeads);
+  const [leads, addOptimisticLead] = useOptimistic(
+    initialLeads,
+    (state, update: { id: string; stage: string }) =>
+      state.map((l) => (l.id === update.id ? { ...l, stage: update.stage } : l))
+  );
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-
-  useEffect(() => {
-    setLeads(initialLeads);
-  }, [initialLeads]);
 
   function handleDrop(targetStage: string) {
     if (!draggingId) return;
     const movedId = draggingId;
     setDraggingId(null);
 
-    setLeads((prev) =>
-      prev.map((l) => (l.id === movedId ? { ...l, stage: targetStage } : l))
-    );
-
     startTransition(async () => {
+      addOptimisticLead({ id: movedId, stage: targetStage });
       await updateLeadStageAction(movedId, targetStage);
     });
   }

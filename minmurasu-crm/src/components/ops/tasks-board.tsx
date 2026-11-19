@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useOptimistic, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { GripVertical, Plus, X } from 'lucide-react';
 import { createTaskAction, updateTaskStatusAction } from '@/lib/actions/operations';
@@ -30,22 +30,22 @@ export function TasksBoard({
   initialTasks: TaskRow[];
   projects: { id: string; name: string; client_id: string }[];
 }) {
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, addOptimisticTask] = useOptimistic(
+    initialTasks,
+    (state, update: { id: string; status: string }) =>
+      state.map((t) => (t.id === update.id ? { ...t, status: update.status } : t))
+  );
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    setTasks(initialTasks);
-  }, [initialTasks]);
-
   function handleDrop(stage: string) {
     if (!draggingId) return;
     const id = draggingId;
     setDraggingId(null);
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: stage } : t)));
     startTransition(async () => {
+      addOptimisticTask({ id, status: stage });
       await updateTaskStatusAction(id, stage);
     });
   }

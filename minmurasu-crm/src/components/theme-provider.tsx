@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -12,6 +12,19 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
+const STORAGE_KEY = 'minmurasu-theme';
+const listeners = new Set<() => void>();
+
+function subscribe(callback: () => void) {
+  listeners.add(callback);
+  return () => listeners.delete(callback);
+}
+
+function getSnapshot(defaultTheme: Theme): Theme {
+  if (typeof window === 'undefined') return defaultTheme;
+  return (window.localStorage.getItem(STORAGE_KEY) as Theme | null) ?? defaultTheme;
+}
+
 export function ThemeProvider({
   children,
   defaultTheme = 'light',
@@ -19,19 +32,20 @@ export function ThemeProvider({
   children: React.ReactNode;
   defaultTheme?: Theme;
 }) {
-  const [theme, setThemeState] = useState<Theme>(defaultTheme);
+  const theme = useSyncExternalStore(
+    subscribe,
+    () => getSnapshot(defaultTheme),
+    () => defaultTheme
+  );
 
   useEffect(() => {
-    const stored = window.localStorage.getItem('minmurasu-theme') as Theme | null;
-    const initial = stored ?? defaultTheme;
-    setThemeState(initial);
-    document.documentElement.classList.toggle('dark', initial === 'dark');
-  }, [defaultTheme]);
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   const setTheme = (next: Theme) => {
-    setThemeState(next);
-    window.localStorage.setItem('minmurasu-theme', next);
+    window.localStorage.setItem(STORAGE_KEY, next);
     document.documentElement.classList.toggle('dark', next === 'dark');
+    listeners.forEach((cb) => cb());
   };
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');

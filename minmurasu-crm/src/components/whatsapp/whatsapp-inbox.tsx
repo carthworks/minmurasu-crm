@@ -10,6 +10,7 @@ export interface ConversationSummary {
   optIn: boolean;
   status: string;
   lastCustomerMessageAt: string | null;
+  isWithin24h: boolean;
 }
 
 export function WhatsAppInbox({
@@ -21,10 +22,7 @@ export function WhatsAppInbox({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(conversations[0]?.id ?? null);
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
-
-  const isWithin24h = selected?.lastCustomerMessageAt
-    ? Date.now() - new Date(selected.lastCustomerMessageAt).getTime() < 24 * 60 * 60 * 1000
-    : false;
+  const isWithin24h = selected?.isWithin24h ?? false;
 
   return (
     <div className="space-y-6">
