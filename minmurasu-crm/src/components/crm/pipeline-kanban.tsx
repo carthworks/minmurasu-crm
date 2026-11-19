@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { GripVertical, List } from 'lucide-react';
 import { updateLeadStageAction } from '@/lib/actions/crm';
@@ -21,6 +21,10 @@ export function PipelineKanban({ initialLeads }: { initialLeads: LeadItem[] }) {
   const [leads, setLeads] = useState(initialLeads);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    setLeads(initialLeads);
+  }, [initialLeads]);
 
   function handleDrop(targetStage: string) {
     if (!draggingId) return;

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { GripVertical, Plus, X } from 'lucide-react';
 import { createTaskAction, updateTaskStatusAction } from '@/lib/actions/operations';
 
@@ -34,6 +35,10 @@ export function TasksBoard({
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
 
   function handleDrop(stage: string) {
     if (!draggingId) return;
@@ -138,11 +143,20 @@ export function TasksBoard({
             <form onSubmit={handleCreate} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-semibold mb-1">Project *</label>
-                <select name="project_id" required className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm">
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+                {projects.length === 0 ? (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-brand-navy dark:text-slate-200 flex items-center justify-between gap-2">
+                    <span>No projects found. Create a project first.</span>
+                    <Link href="/projects" className="font-bold text-brand-orange hover:underline shrink-0">
+                      + New Project
+                    </Link>
+                  </div>
+                ) : (
+                  <select name="project_id" required className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-brand-navy-dark px-3 py-2 text-sm">
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Task Title *</label>

@@ -286,3 +286,28 @@ export async function updateSocialPostApprovalAction(
   revalidatePath('/approvals');
   return { success: true };
 }
+
+export async function updateOrganizationAction(formData: FormData) {
+  const ctx = await getCurrentUserContext();
+  if (!ctx || (ctx.role !== 'super_admin' && ctx.role !== 'agency_admin')) {
+    return { error: 'Unauthorized: admin access required.' };
+  }
+
+  const name = String(formData.get('name') ?? '').trim();
+  const domain = String(formData.get('domain') ?? '').trim();
+
+  if (name.length < 2) {
+    return { error: 'Organization name must be at least 2 characters.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('organizations')
+    .update({ name, domain: domain || null })
+    .eq('id', ctx.organizationId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/settings');
+  return { success: true };
+}
