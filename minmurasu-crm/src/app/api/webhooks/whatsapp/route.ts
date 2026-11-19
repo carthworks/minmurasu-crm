@@ -1,6 +1,6 @@
-import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
+import { verifyMetaSignature } from '@/lib/security/webhook-signature';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -42,11 +42,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
   }
 
-  const expected =
-    'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
-  const a = Buffer.from(signatureHeader);
-  const b = Buffer.from(expected);
-  const signatureVerified = a.length === b.length && crypto.timingSafeEqual(a, b);
+  const signatureVerified = verifyMetaSignature(rawBody, signatureHeader, appSecret);
   if (!signatureVerified) {
     return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
   }
